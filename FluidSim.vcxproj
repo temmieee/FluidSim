@@ -42,8 +42,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -71,12 +71,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>D:\Cdev\FluidSim\FluidSim\Libraries\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\Cdev\FluidSim\FluidSim\Libraries\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\Fork\FluidSim\Libraries\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\Fork\FluidSim\Libraries\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Cdev\FluidSim\FluidSim\Libraries\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\Cdev\FluidSim\FluidSim\Libraries\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\Fork\FluidSim\Libraries\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\Fork\FluidSim\Libraries\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
