@@ -1,0 +1,138 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Cdev\\FluidSim\\FluidSim\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\computeShader.compute||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:computeShader.compute||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\physicHandler.compute||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:physicHandler.compute||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\default.vert||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:default.vert||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:shaderClass.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\default.frag||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:default.frag||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{F76226A0-4CB9-4B5B-8B75-90B65F98A7BC}|FluidSim.vcxproj|solutionrelative:shaderClass.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "physicHandler.compute",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\physicHandler.compute",
+              "RelativeDocumentMoniker": "physicHandler.compute",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\physicHandler.compute",
+              "RelativeToolTip": "physicHandler.compute",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002777|",
+              "WhenOpened": "2025-11-30T06:30:26.195Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "computeShader.compute",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\computeShader.compute",
+              "RelativeDocumentMoniker": "computeShader.compute",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\computeShader.compute",
+              "RelativeToolTip": "computeShader.compute",
+              "ViewState": "AgIAAFQAAAAAAAAAAAAiwG0AAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002777|",
+              "WhenOpened": "2025-11-29T12:21:32.475Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "shaderClass.cpp",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.cpp",
+              "RelativeDocumentMoniker": "shaderClass.cpp",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.cpp",
+              "RelativeToolTip": "shaderClass.cpp",
+              "ViewState": "AgIAACIAAAAAAAAAAAASwDkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-11-29T15:08:49.49Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "shaderClass.h",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.h",
+              "RelativeDocumentMoniker": "shaderClass.h",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\shaderClass.h",
+              "RelativeToolTip": "shaderClass.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-11-29T10:24:43.264Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "default.frag",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\default.frag",
+              "RelativeDocumentMoniker": "default.frag",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\default.frag",
+              "RelativeToolTip": "default.frag",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-29T10:23:17.022Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "default.vert",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\default.vert",
+              "RelativeDocumentMoniker": "default.vert",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\default.vert",
+              "RelativeToolTip": "default.vert",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-29T10:21:55.501Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Main.cpp",
+              "DocumentMoniker": "D:\\Cdev\\FluidSim\\FluidSim\\Main.cpp",
+              "RelativeDocumentMoniker": "Main.cpp",
+              "ToolTip": "D:\\Cdev\\FluidSim\\FluidSim\\Main.cpp",
+              "RelativeToolTip": "Main.cpp",
+              "ViewState": "AgIAAKEAAAAAAAAAAAAiwLgAAAA1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-11-27T17:18:13.554Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
