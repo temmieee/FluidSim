@@ -3,12 +3,12 @@
 #include"glad/glad.h"
 #include"GLFW/glfw3.h"
 #include"shaderClass.h"
+#include"meshParser.h"
 #include <string>
 #include <vector>
 #include <cmath>
 #include <thread>
 #include <chrono>
-
 
 const unsigned int SCREEN_WIDTH = 2048;
 const unsigned int SCREEN_HEIGHT = 1024;
@@ -42,6 +42,7 @@ struct Vector4
 	GLfloat x, y, z,w;
 };
 struct Material {
+	Vector4 color;
 	float roughness;
 	float metallic;
 	float emissive;
@@ -149,7 +150,7 @@ void Draw(std::vector<Sphere> spheresArray) {
 	float input1 = 0.5;
 	float input2 = 0.75;
 	float input3 = 1;
-	Sphere sphere(new float* [12] { &input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3});
+	Sphere sphere(new float* [16] { &input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, &input2});
 	std::vector<Sphere> spheres;
 	spheres.push_back(sphere);
 	spheres.push_back(sphere);
@@ -255,7 +256,7 @@ void DrawDensity(std::vector<Sphere> spheresArray) {
 	float input1 = 0.5;
 	float input2 = 0.75;
 	float input3 = 1;
-	Sphere sphere(new float* [12] { &input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3});
+	Sphere sphere(new float* [16] { &input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input1, & input2, & input3, & input2});
 	std::vector<Sphere> spheres;
 	spheres.push_back(sphere);
 	spheres.push_back(sphere);
@@ -337,12 +338,58 @@ std::vector<Sphere> CreateSphereArray(float bound[], int* amount) {
 				float metallic = 0.0f;
 				float emissive = 0.f;
 				float refractiveIndex = 1.0f;
-				Sphere newSphere = Sphere(new float* [12] { &positionX, & positionY, & positionZ, & radius, & colorR, & colorG, & colorB, & colorA, & roughness, & metallic, & emissive, & refractiveIndex });
+				float materialColorR = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float materialColorG = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float materialColorB = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float materialColorA = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				Sphere newSphere = Sphere(new float* [16] { &positionX, & positionY, & positionZ, & radius, & colorR, & colorG, & colorB, & colorA, & roughness, & metallic, & emissive, & refractiveIndex, &materialColorR, & materialColorG,&materialColorB, &materialColorA  });
 				spheres.push_back(newSphere);
 			}
 		}
 	}
 	return spheres;
+}
+void PrintArray(float array[], char howMany)
+{
+	for (char i = 0; i < howMany; i++) {
+		std::cout << array[i] << " ";
+	}
+	std::cout << "\n";
+}
+void PrintArray(int array[], char howMany)
+{
+	for (char i = 0; i < howMany; i++) {
+		if (i) {
+			std::cout << "/";
+		}
+		std::cout  << array[i] ;
+	}
+	std::cout << " ";
+}
+void DrawMesh() {
+	std::vector<Mesh> mesh=ScanForMesh("Test.mesh");
+	Mesh m = mesh[0];
+	for (unsigned int i = 0; i < m.vertices.size(); i++)
+	{
+		std::cout << "Vertex " << (int)i << ": ";
+		PrintArray(m.vertices[i].position,3);
+	}
+	for (unsigned int i= 0; i < m.normals.size(); i++) {
+		std::cout << "Normal" << (int)i;
+		PrintArray(m.normals[i].normal,3);
+	}
+	for (unsigned int i = 0; i < m.uvs.size(); i++) {
+		std::cout << "UV" << (int)i << ':';
+		PrintArray(m.uvs[i].uv,2);
+
+	}
+	for (unsigned int i = 0; i < m.faces.size(); i++) {
+		std::cout << "Face" << (int)i << " ";
+		for (char j = 0; j < m.faces[i].indicesGroups.size(); j++) {
+			PrintArray(m.faces[i].indicesGroups[j].indicies,3);
+		}
+		std::cout << "\n";
+	}
 }
 int main()
 {
@@ -360,6 +407,7 @@ int main()
 	spheres[1].radius = 100;
 	spheres[1].material.roughness = 1;
 	spheres[9].material.emissive = 4;
-	Draw(spheres);
+	//Draw(spheres);
+	DrawMesh();
 	return 0;
 }
