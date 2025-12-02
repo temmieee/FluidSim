@@ -10,8 +10,8 @@
 #include <chrono>
 
 
-const unsigned int SCREEN_WIDTH = 1248;
-const unsigned int SCREEN_HEIGHT = 824;
+const unsigned int SCREEN_WIDTH = 2048;
+const unsigned int SCREEN_HEIGHT = 1024;
 
 const unsigned short OPENGL_MAJOR_VERSION = 4;
 const unsigned short OPENGL_MINOR_VERSION = 6;
@@ -143,7 +143,7 @@ void Draw(std::vector<Sphere> spheresArray) {
 	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 	Shader screenShader("default.vert", "default.frag");
 	float input1 = 0.5;
@@ -175,7 +175,7 @@ void Draw(std::vector<Sphere> spheresArray) {
 		computeShader.Activate();
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, spheresBuffer);
 		glUniform1f(halffov, 75);
-		glDispatchCompute(ceil(SCREEN_WIDTH / 8), ceil(SCREEN_HEIGHT / 8), 1);
+		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
@@ -349,12 +349,12 @@ int main()
 	float bound[3] = { 10.f,3.f,10.f };
 	int amount =20;
 	std::vector<Sphere> spheres=CreateSphereArray(bound, &amount);
-	spheres[0].position.x = -20;
+	spheres[0].position.x = -15;
 	spheres[0].color = { 0.f,0.f,0.f,1.f };
 	spheres[0].position.z = -3;
-	spheres[0].position.y =15;
+	spheres[0].position.y =10;
 	spheres[0].radius = 10;
-	spheres[0].material.emissive = 5;
+	spheres[0].material.emissive = 4;
 	spheres[1].position.y = -100.76;
 	spheres[1].position.z = 0;
 	spheres[1].radius = 100;

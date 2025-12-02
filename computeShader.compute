@@ -26,7 +26,7 @@ struct HitInfo{
 layout (std430, binding = 1) buffer spheresBuffer {
 	Sphere data[64];
 };
-layout (local_size_x = 8, local_size_y = 8, local_size_z=1) in;
+layout (local_size_x = 32, local_size_y = 32, local_size_z=1) in;
 layout (rgba32f, binding = 0) uniform image2D screen;
 float RandomValue(inout uint seed)
 {
@@ -107,14 +107,13 @@ void main()
 	vec3 debug;
 	vec3 col=vec3(1,1,1);
 	vec3 light=vec3(0,0,0);
-	uint repetition=250;
+	uint repetition=500;
 	for (int i=0;i<repetition;i++)
 	{
-		uint rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * i;
 		vec3 tempCol=vec3(1,1,1);
 		vec3 tempLight=vec3(0,0,0);
-		rayOrigin= cameraPos+vec3(x, y,atan(halffov*3.14/180)) ;
-		rayDir = normalize(normalize(vec3(x, y, atan(halffov * 3.14 / 180))) + GetRandomDirection(rng) * 0.001);
+		rayOrigin= cameraPos+vec3(x, y,atan(halffov*3.14/180));
+		rayDir = normalize(rayOrigin-cameraPos);
 		for (int j=0;j<10;j++)
 		{
 				Ray ray;
@@ -125,12 +124,12 @@ void main()
 			{
 			hitInfo.normal=vec3(0,0,0);
 			hitInfo.position=vec3(0,0,0);
-			tempCol*=vec3(0.5,0.75,1);
-			tempLight += 1 * tempCol;
+			tempCol=vec3(0,0,0);
 				break;
 			}
 			hitInfo=tempHitInfo;
 			rayOrigin=hitInfo.position+hitInfo.normal*0.0;
+			uint rng=pixelCoords.x+pixelCoords.y*dimensions.x+dimensions.x*dimensions.y*i;
 			rayDir=normalize(reflect(rayDir,hitInfo.normal)+GetRandomDirection(rng)*hitInfo.material.roughness);;
 			tempLight+=hitInfo.material.emissive*tempCol;
 			tempCol*=data[hitInfo.sphereIndex].color.xyz;
@@ -138,13 +137,9 @@ void main()
 		light+=tempLight/repetition;
 	}	
 	pixel =vec4(light, 1.0);
-
-	
-
 	//pixel=vec4(light, 1.0);
 	//uint rng=pixelCoords.x+pixelCoords.y*dimensions.x;
 	//pixel=vec4(GetRandomDirection(rng),1);
 	imageStore(screen, pixelCoords, pixel);
-	
 
 }
