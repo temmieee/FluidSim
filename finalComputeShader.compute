@@ -1,0 +1,189 @@
+#version 460 core
+
+struct Ray {
+	vec3 origin;
+	vec3 direction;
+};
+struct Material {
+	vec4 col;
+	float roughness;
+	float metallic;
+	float emissive;
+	float refractiveIndex;
+};
+struct Sphere {
+	vec3 position;
+	float radius;
+	vec4 color;
+	Material material;
+};
+struct Normal{
+	float x, y, z;
+};
+struct UV {
+	float x, y;
+};
+
+struct Object {
+	ivec2 faceIndices;
+	int objectIndex;
+};
+struct HitInfo {
+	vec3 position;
+	vec3 normal;
+	int objectIndex;
+	Material material;
+};
+
+
+layout(std430, binding = 1) buffer spheresBuffer {
+	Sphere data[64];
+};
+layout(std430, binding = 2) buffer vertexBuffer {
+	vec4 vertexData[];
+};
+layout(std430, binding = 3) buffer normalBuffer {
+	Normal normalData[];
+};
+layout(std430, binding = 4) buffer uvBuffer {
+	UV uvData[];
+};
+layout(std430, binding = 5) buffer faceBuffer {
+	ivec4 faceData[960*3];
+};
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D screen;
+float RandomValue(inout uint seed)
+{
+	seed *= (seed + 195439) * (seed + 124395) * (seed + 845921);
+	return seed / 4294967295.0;
+}
+float RandomValueNormalDistribution(inout uint seed)
+{
+	float theta = 2 * 3.14159265359 * RandomValue(seed);
+	float rho = sqrt(-2.0 * log(RandomValue(seed)));
+	return rho * cos(theta);
+}
+vec3 GetRandomDirection(inout uint seed)
+{
+	float x = RandomValueNormalDistribution(seed);
+	float y = RandomValueNormalDistribution(seed);
+	float z = RandomValueNormalDistribution(seed);
+	vec3 vec = normalize(vec3(x, y, z));
+	return vec;
+}
+HitInfo GetHitInfoFromRay(Ray ray)
+{
+	HitInfo hitInfo;
+	hitInfo.normal = vec3(0, 0, 0);
+	hitInfo.position = vec3(0, 0, 0);
+	hitInfo.objectIndex = -1;
+	float distance = 999999999;
+	float kEpsilon = 0.0000001;
+	for (int i = 0; i< faceData.length()+3;i+=3)
+	{
+				
+		vec3 v0 = vec3(vertexData[faceData[i].x].xyz);
+		vec3 v1 = vec3(vertexData[faceData[i+1].x].xyz);
+		vec3 v2 = vec3(vertexData[faceData[i+2].x].xyz);
+		vec3 v0v1 = v1 - v0;
+		vec3 v0v2 = v2 - v0;
+		vec3 N = cross(v0v1, v0v2);
+		float NdotRayDirection = dot(N, ray.direction);
+		if (abs(NdotRayDirection) < kEpsilon) // Almost 0
+		{
+			continue;
+		}
+		float d = -dot(N, v0);
+		float t = -(dot(N, ray.origin) + d) / NdotRayDirection;
+		
+		if (t < 0) continue; // The triangle is behind
+
+		
+		// Compute the intersection point using equation 1
+		vec3 P = ray.origin + t * ray.direction;
+		vec3 Ne;// Vector perpendicular to triangle's plane
+		 // Test sidedness of P w.r.t. edge v0v1
+		vec3 v0p = P - v0;
+		Ne = cross(v0v1, v0p);
+		if (dot(N, Ne) < 0) continue;
+		// Test sidedness of P w.r.t. edge v2v1
+		vec3 v2v1 = v2 - v1;
+		vec3 v1p = P - v1;
+		Ne = cross(v2v1, v1p);
+		if (dot(N, Ne) < 0) continue; // P is on the right side
+
+		// Test sidedness of P w.r.t. edge v2v0
+		vec3 v2v0 = v0 - v2;
+		vec3 v2p = P - v2;
+		Ne = cross(v2v0, v2p);
+		if (dot(N, Ne) < 0) continue; // P is on the right side
+		if (t > distance) continue;
+		distance = t;
+		hitInfo.normal = normalize(N);
+		hitInfo.objectIndex = 0;
+	}
+	return hitInfo;
+}
+float SampleDensity(vec3 position, float stepSize)
+{
+	float density = 0.0;
+	for (int i = 0; i < data.length(); i++)
+	{
+		float dist = length(position - data[i].position);
+		if (dist < data[i].radius)
+		{
+			density += 1.0 - (dist / data[i].radius);
+		}
+	}
+	return density * stepSize;
+}
+
+uniform float halffov;
+void main()
+{
+	vec4 pixel = vec4(0, 0, 0, 1.0);
+	//vec4 pixel = vec4(0.0, 0.5, 0.0, 1.0);
+	ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 dimensions = imageSize(screen);
+	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
+	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
+
+	vec3 cameraPos = vec3(2, 2, -5f);
+	vec3 rayOrigin = cameraPos + vec3(x, y, atan(halffov * 3.14 / 180));
+	vec3 rayDir = normalize(rayOrigin - cameraPos);
+
+	HitInfo hitInfo;
+	vec3 debug;
+	vec3 col = vec3(1, 1, 1);
+	vec3 light = vec3(0, 0, 0);
+	uint repetition = 1;
+	for (int i = 0; i < repetition; i++)
+	{
+		vec3 tempCol = vec3(1, 1, 1);
+		vec3 tempLight = vec3(0, 0, 0);
+		rayOrigin = cameraPos + vec3(x, y, atan(halffov * 3.14 / 180));
+		rayDir = normalize(rayOrigin - cameraPos);
+		for (int j = 0; j < 1; j++)
+		{
+			Ray ray;
+			ray.origin = rayOrigin;
+			ray.direction = rayDir;
+			hitInfo.normal = vec3(0, 0, 0);
+			HitInfo tempHitInfo = GetHitInfoFromRay(ray);
+			if (tempHitInfo.objectIndex == -1)
+			{
+				break;
+			}
+			hitInfo = tempHitInfo;
+			
+		}
+		light += tempLight / repetition;
+	}
+	pixel = vec4(hitInfo.normal , 1.0);
+	//pixel=vec4(light, 1.0);
+	//uint rng=pixelCoords.x+pixelCoords.y*dimensions.x;
+	//pixel=vec4(GetRandomDirection(rng),1);
+	imageStore(screen, pixelCoords, pixel);
+
+}

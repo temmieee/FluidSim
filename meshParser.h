@@ -8,6 +8,7 @@
 #include <vector>
 struct Vertex {
 	float position[3];
+	float padding=1.0f;
 	Vertex(std::string line);
 };
 struct Normal {
@@ -21,17 +22,19 @@ struct UV {
 struct IndiciesGroup {
 	//position,normal,uv
 	int indicies[3];
+	int objectIndex=0;
 };
 struct Face {
 	std::vector<IndiciesGroup> indicesGroups;
+	Face(IndiciesGroup first, IndiciesGroup second, IndiciesGroup third);
 	Face(std::string line);
 
 };
+float ReadNextNumber(std::string* stream);
 std::vector<Face> TriangulateFace(std::string line);
 struct Mesh {
 public:
 	std::string name;
-	std::string meshData;
 	std::vector<Vertex> vertices;
 	std::vector<Normal> normals;
 	std::vector<UV> uvs;

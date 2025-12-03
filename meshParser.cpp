@@ -26,7 +26,7 @@ unsigned int GetIndex(std::string* stream)
 		tempString = tempString.substr(0, end);
 		*stream = stream->substr(end + 1);
 	}
-	return std::stoi(tempString);
+	return std::stoi(tempString)-1;
 }
 IndiciesGroup ReadNextIndexGroup(std::string* stream)
 {
@@ -75,9 +75,18 @@ Face::Face(std::string line)
 		indicesGroups.push_back(ReadNextIndexGroup(&line));
 	}
 }
-std::vector<Face> TriangulateFace(std::string line) 
+Face::Face(IndiciesGroup first, IndiciesGroup second, IndiciesGroup third) {
+	indicesGroups.push_back(first);
+	indicesGroups.push_back(second);
+	indicesGroups.push_back(third);
+}
+std::vector<Face> TriangulateFace(Face face) 
 {
 	std::vector<Face> faces;
+	for (char i = 0; i < (face.indicesGroups.size() - 2); i++) {
+		Face tempFace(face.indicesGroups[0], face.indicesGroups[i+1], face.indicesGroups[i + 2]);
+		faces.push_back(tempFace);
+	}
 	return faces;
 }
 std::vector<Mesh> ScanForMesh(const char* meshFile)
@@ -115,7 +124,10 @@ std::vector<Mesh> ScanForMesh(const char* meshFile)
 			else if (line[0] == 'f') {
 
 				Face face(line);
-				mesh.faces.push_back(face);
+				std::vector<Face> tempFaces=TriangulateFace(face);
+				for (char i = 0; i < tempFaces.size(); i++) {
+					mesh.faces.push_back(tempFaces[i]);
+				}
 			}
 		
 	}
