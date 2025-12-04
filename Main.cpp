@@ -458,6 +458,13 @@ void DrawMesh(std::vector<Mesh> meshes) {
 	glBufferData(GL_SHADER_STORAGE_BUFFER, m.vertices.size() * sizeof(Vertex), m.vertices.data(), GL_STATIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	
+	GLuint normalBuffer;
+	glCreateBuffers(1, &normalBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, normalBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, m.normals.size() * sizeof(Normal), m.normals.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 
 	//convert this to something the GPU could understand
@@ -470,7 +477,6 @@ void DrawMesh(std::vector<Mesh> meshes) {
 	GLuint faceBuffer;
 	glCreateBuffers(1, &faceBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, faceBuffer);
-	
 	glBufferData(GL_SHADER_STORAGE_BUFFER, tempFace.size()*sizeof(IndiciesGroup), tempFace.data(), GL_STATIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -487,7 +493,7 @@ void DrawMesh(std::vector<Mesh> meshes) {
 		auto start = std::chrono::high_resolution_clock::now();
 		computeShader.Activate();
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
 		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
 		glUniform1f(halffov, 75);
@@ -531,7 +537,7 @@ int main()
 	spheres[1].radius = 100;
 	spheres[1].material.roughness = 1;
 	spheres[9].material.emissive = 4;
-	Draw(spheres);
+	//Draw(spheres);
 	std::vector<Mesh> mesh = ScanForMesh("Test.mesh");
 	//PrintMesh(mesh[0]);
 	DrawMesh(mesh);

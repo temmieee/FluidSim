@@ -13,6 +13,7 @@ struct Vertex {
 };
 struct Normal {
 	float normal[3];
+	float padding = 1.0f;
 	Normal(std::string line);
 };
 struct UV {
