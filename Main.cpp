@@ -33,21 +33,7 @@ GLuint indices[] =
 	0, 2, 1,
 	0, 3, 2
 };
-struct Vector3
-{
-	GLfloat x, y, z;
-}; 
-struct Vector4
-{
-	GLfloat x, y, z,w;
-};
-struct Material {
-	Vector4 color;
-	float roughness;
-	float metallic;
-	float emissive;
-	float refractiveIndex;
-};
+
 struct Sphere {
 	Vector3 position;
 	GLfloat radius;
@@ -521,6 +507,145 @@ void DrawMesh(std::vector<Mesh> meshes) {
 	glfwTerminate();
 
 }
+void DrawBatchedMesh(Mesh m) {
+
+	glfwInit();
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR_VERSION);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Temmie", NULL, NULL);
+	if (!window)
+	{
+		std::cout << "Failed to create the GLFW window\n";
+		glfwTerminate();
+	}
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(vSync);
+
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize OpenGL context" << std::endl;
+	}
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+
+	GLuint VAO, VBO, EBO;
+	glCreateVertexArrays(1, &VAO);
+	glCreateBuffers(1, &VBO);
+	glCreateBuffers(1, &EBO);
+
+	glNamedBufferData(VBO, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glNamedBufferData(EBO, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	glEnableVertexArrayAttrib(VAO, 0);
+	glVertexArrayAttribBinding(VAO, 0, 0);
+	glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
+
+	glEnableVertexArrayAttrib(VAO, 1);
+	glVertexArrayAttribBinding(VAO, 1, 0);
+	glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat));
+
+	glVertexArrayVertexBuffer(VAO, 0, VBO, 0, 5 * sizeof(GLfloat));
+	glVertexArrayElementBuffer(VAO, EBO);
+
+
+	GLuint screenTex;
+	glCreateTextures(GL_TEXTURE_2D, 1, &screenTex);
+	glTextureParameteri(screenTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+
+	Shader screenShader("default.vert", "default.frag");
+	float input1 = 0.5;
+	float input2 = 0.75;
+	float input3 = 1;
+
+	//spheresArray = spheres;
+	Shader computeShader("finalComputeShader.compute");
+	//meshBuffer
+	GLuint vertexBuffer;
+	glCreateBuffers(1, &vertexBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, vertexBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, m.vertices.size() * sizeof(Vertex), m.vertices.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	GLuint normalBuffer;
+	glCreateBuffers(1, &normalBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, normalBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, m.normals.size() * sizeof(Normal), m.normals.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
+	//convert this to something the GPU could understand
+	std::vector<IndiciesGroup> tempFace;
+	for (Face faceArray : m.faces) {
+		for (IndiciesGroup iG : faceArray.indicesGroups) {
+			tempFace.push_back(iG);
+		}
+	}
+	GLuint faceBuffer;
+	glCreateBuffers(1, &faceBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, faceBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, tempFace.size() * sizeof(IndiciesGroup), tempFace.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
+	GLuint batchedInfoBuffer;
+	glCreateBuffers(1, &batchedInfoBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, batchedInfoBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, m.batchedInfos.size() * sizeof(BatchedInfo), m.batchedInfos.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	void* temp = m.batchedInfos.data();
+
+	GLuint halffov = glGetUniformLocation(computeShader.ID, "halffov");
+
+	PrintSpecs();
+
+
+	while (!glfwWindowShouldClose(window))
+	{
+		auto start = std::chrono::high_resolution_clock::now();
+		computeShader.Activate();
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
+		glUniform1f(halffov, 75);
+		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		screenShader.Activate();
+		glBindTextureUnit(0, screenTex);
+		const char* texture = "screen";
+		screenShader.GetTexture(texture);
+		glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
+		auto stop = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+		std::cout << "Render time: " << duration.count() << " microseconds" << std::endl;
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+	glDeleteBuffers(1, &EBO);
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	computeShader.Delete();
+	screenShader.Delete();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+
+}
 int main()
 {
 	float bound[3] = { 10.f,3.f,10.f };
@@ -538,8 +663,11 @@ int main()
 	spheres[1].material.roughness = 1;
 	spheres[9].material.emissive = 4;
 	//Draw(spheres);
-	std::vector<Mesh> mesh = ScanForMesh("Test.mesh");
+	std::vector<Mesh> mesh = ScanForMesh("Cube.mesh");
+	Mesh batchedMesh = BatchMesh(mesh);
+	Vector3 vec3(1, 1, 1);
+	batchedMesh.batchedInfos[0].position = vec3;
 	//PrintMesh(mesh[0]);
-	DrawMesh(mesh);
+	DrawBatchedMesh(batchedMesh);
 	return 0;
 }

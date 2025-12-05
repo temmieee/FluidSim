@@ -39,8 +39,14 @@ struct UV {
 };
 
 struct Object {
-	ivec2 faceIndices;
-	int objectIndex;
+	uint startFace;
+	uint facesAmount;
+	uint materialIndex;
+	uint priorityIndex;
+	vec3 position;
+	vec3 rotation;
+	vec3 scale;
+	float padding[3];
 };
 struct HitInfo {
 	vec3 position;
@@ -64,6 +70,9 @@ layout(std430, binding = 4) buffer uvBuffer {
 };
 layout(std430, binding = 5) buffer faceBuffer {
 	ivec4 faceData[];
+};
+layout(std430, binding = 6) buffer objectBuffer {
+	Object objectData[2];
 };
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
@@ -95,53 +104,65 @@ HitInfo GetHitInfoFromRay(Ray ray)
 	hitInfo.objectIndex = -1;
 	float distance = 999999999;
 	float kEpsilon = 0.0000001;
-	for (int i = 0; i< numberofFaces * 3 +3;i+=3)
+
+	for (uint objectIndex=0;objectIndex<3;objectIndex++)
 	{
-				
-		vec3 v0 = vec3(vertexData[faceData[i].x].xyz);
-		vec3 v1 = vec3(vertexData[faceData[i+1].x].xyz);
-		vec3 v2 = vec3(vertexData[faceData[i+2].x].xyz);
-		vec3 v0v1 = v1 - v0;
-		vec3 v0v2 = v2 - v0;
-		vec3 N = cross(v0v1, v0v2);
-		float NdotRayDirection = dot(N, ray.direction);
-		if (abs(NdotRayDirection) < kEpsilon) // Almost 0
+		
+		HitInfo tempHitInfo;
+		tempHitInfo=hitInfo;
+		for (uint i = objectData[objectIndex].startFace; i< (objectData[objectIndex].startFace+objectData[objectIndex].facesAmount+1) * 3;i+=3)
 		{
-			continue;
+							
+			vec3 v0 = vec3(vertexData[faceData[i].x].xyz)+objectData[objectIndex].position;
+			vec3 v1 = vec3(vertexData[faceData[i+1].x].xyz)+objectData[objectIndex].position;
+			vec3 v2 = vec3(vertexData[faceData[i+2].x].xyz)+objectData[objectIndex].position;
+			vec3 v0v1 = v1 - v0;
+			vec3 v0v2 = v2 - v0;
+			vec3 N = cross(v0v1, v0v2);
+			float NdotRayDirection = dot(N, ray.direction);
+			if (abs(NdotRayDirection) < kEpsilon) // Almost 0
+			{
+				continue;
+			}
+			float d = -dot(N, v0);
+			float t = -(dot(N, ray.origin) + d) / NdotRayDirection;
+		
+			if (t < 0) continue; // The triangle is behind
+
+		
+			// Compute the intersection point using equation 1
+			vec3 P = ray.origin + t * ray.direction;
+			vec3 Ne;// Vector perpendicular to triangle's plane
+			 // Test sidedness of P w.r.t. edge v0v1
+			vec3 v0p = P - v0;
+			Ne = cross(v0v1, v0p);
+			if (dot(N, Ne) < 0) continue;
+			// Test sidedness of P w.r.t. edge v2v1
+			vec3 v2v1 = v2 - v1;
+			vec3 v1p = P - v1;
+			Ne = cross(v2v1, v1p);
+			if (dot(N, Ne) < 0) continue; // P is on the right side
+
+			// Test sidedness of P w.r.t. edge v2v0
+			vec3 v2v0 = v0 - v2;
+			vec3 v2p = P - v2;
+			Ne = cross(v2v0, v2p);
+			if (dot(N, Ne) < 0) continue; // P is on the right side
+			//if (t > distance) continue;
+			//distance = t;
+			vec3 actualNormalv0 = normalData[faceData[i].z].xyz;
+			vec3 actualNormalv1 = normalData[faceData[i + 1].z].xyz;
+			vec3 actualNormalv2 = normalData[faceData[i + 2].z].xyz;
+			vec3 weight = GetWeight(P, v0, v1, v2);
+			vec3 actualNormal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
+			tempHitInfo.position=P;
+			tempHitInfo.normal=vec3(3,3,3);
+			tempHitInfo.objectIndex=0;
 		}
-		float d = -dot(N, v0);
-		float t = -(dot(N, ray.origin) + d) / NdotRayDirection;
 		
-		if (t < 0) continue; // The triangle is behind
-
-		
-		// Compute the intersection point using equation 1
-		vec3 P = ray.origin + t * ray.direction;
-		vec3 Ne;// Vector perpendicular to triangle's plane
-		 // Test sidedness of P w.r.t. edge v0v1
-		vec3 v0p = P - v0;
-		Ne = cross(v0v1, v0p);
-		if (dot(N, Ne) < 0) continue;
-		// Test sidedness of P w.r.t. edge v2v1
-		vec3 v2v1 = v2 - v1;
-		vec3 v1p = P - v1;
-		Ne = cross(v2v1, v1p);
-		if (dot(N, Ne) < 0) continue; // P is on the right side
-
-		// Test sidedness of P w.r.t. edge v2v0
-		vec3 v2v0 = v0 - v2;
-		vec3 v2p = P - v2;
-		Ne = cross(v2v0, v2p);
-		if (dot(N, Ne) < 0) continue; // P is on the right side
-		if (t > distance) continue;
-		distance = t;
-		vec3 actualNormalv0 = normalData[faceData[i].z].xyz;
-		vec3 actualNormalv1 = normalData[faceData[i + 1].z].xyz;
-		vec3 actualNormalv2 = normalData[faceData[i + 2].z].xyz;
-		vec3 weight = GetWeight(P, v0, v1, v2);
-		vec3 actualNormal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
-		hitInfo.normal = actualNormal;
-		hitInfo.objectIndex = 0;
+		float dist=length(tempHitInfo.position-ray.origin);
+		//if (dist>distance) continue;
+		hitInfo=tempHitInfo;
 	}
 	return hitInfo;
 }
