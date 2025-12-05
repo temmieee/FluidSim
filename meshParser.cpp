@@ -4,10 +4,37 @@ Vector3::Vector3() {
 	y = 0;
 	z = 0;
 }
+Vector4::Vector4() {
+	x = 0;
+	y = 0;
+	z = 0;
+	w = 0;
+}
 Vector3::Vector3(float inX, float inY, float inZ) {
 	x = inX;
 	y = inY;
 	z = inZ;
+}
+Vector4::Vector4(float inX, float inY, float inZ, float inW) {
+	x = inX;
+	y = inY;
+	z = inZ;
+	w = inW;
+}
+Material::Material() {
+	Vector4 vec4;
+	color = vec4;
+	roughness = 1;
+	metallic = 1;
+	emissive = 0;
+	refractiveIndex = 1;
+}
+Material::Material(Vector4 inCol, float inRoughness, float inMetallic, float inEmissive, float inRefractiveIndex) {
+	color = inCol;
+	roughness = inRoughness;
+	metallic = inMetallic;
+	emissive = inEmissive;
+	refractiveIndex = inRefractiveIndex;
 }
 float ReadNextNumber(std::string* stream)
 {
@@ -104,32 +131,32 @@ BatchedInfo::BatchedInfo() {
 	facesAmount = 0;
 	materialIndex = 0;
 	priorityIndex = 0;
-	Vector3 vec0(0.f, 0.f, 0.f);
-	position = vec0;
-	rotation = vec0;
-	scale = vec0;
-	for (float f : padding) {
-		f = 0;
+	for (char i = 0; i < 3; i++) {
+		position[i] = 0;
+		rotation[i] = 0;
+		scale[i] = 0;
 	}
 }
-BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, unsigned int mIndex, unsigned int prioIndex, Vector3 pos, Vector3 rot, Vector3 s) {
+BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, float pos[], float rot[], float s[]) {
 	startFace = sFace;
 	facesAmount = fAmount;
 	materialIndex = mIndex;
 	priorityIndex = prioIndex;
-	position = pos;
-	rotation = rot;
-	scale = s;
-	for (float f : padding) {
-		f = 0;
+	for (char i = 0; i < 3; i++) {
+		position[i] = pos[i];
+		rotation[i] = rot[i];
+		scale[i] = s[i];
 	}
 }
 Mesh BatchMesh(std::vector<Mesh> meshes) {
 	Mesh batchedMesh;
 	unsigned int curFaceIndex=0;
 	for (unsigned int meshIndex = 0; meshIndex < meshes.size(); meshIndex++) {
-		Vector3 vec0(0.f, 0.f, 0.f);
-		BatchedInfo batchedInfo(0,0,0,0,vec0,vec0,vec0);
+		float temp[3];
+		temp[0] = 0;
+		temp[1] = 0;
+		temp[2] = 0;
+		BatchedInfo batchedInfo(0,0,0,0,temp,temp,temp);
 		batchedInfo.startFace = curFaceIndex;
 		for (unsigned int i=0; i < meshes[meshIndex].vertices.size(); i++) {
 			batchedMesh.vertices.push_back(meshes[meshIndex].vertices[i]);

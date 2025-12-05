@@ -507,7 +507,7 @@ void DrawMesh(std::vector<Mesh> meshes) {
 	glfwTerminate();
 
 }
-void DrawBatchedMesh(Mesh m) {
+void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 
 	glfwInit();
 
@@ -605,9 +605,18 @@ void DrawBatchedMesh(Mesh m) {
 	glBufferData(GL_SHADER_STORAGE_BUFFER, m.batchedInfos.size() * sizeof(BatchedInfo), m.batchedInfos.data(), GL_STATIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	unsigned int size = sizeof(BatchedInfo);
 	void* temp = m.batchedInfos.data();
+	GLuint materialBuffer;
+	glCreateBuffers(1, &materialBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, materialBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, materialArray.size() * sizeof(Material), materialArray.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	GLuint halffov = glGetUniformLocation(computeShader.ID, "halffov");
+	GLuint objectAmount = glGetUniformLocation(computeShader.ID, "objectAmount");
 
 	PrintSpecs();
 
@@ -621,7 +630,9 @@ void DrawBatchedMesh(Mesh m) {
 		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
 		glUniform1f(halffov, 75);
+		glUniform1ui(objectAmount, m.batchedInfos.size());
 		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		screenShader.Activate();
@@ -646,6 +657,41 @@ void DrawBatchedMesh(Mesh m) {
 	glfwTerminate();
 
 }
+std::vector<Material> CreateMaterialArray(int howMany) {
+	std::vector<Material> mA;
+	for (char i = 0; i < howMany; i++) {
+		float materialColorR = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float materialColorG = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float materialColorB = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float materialColorA = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float roughness = 1.0f;
+		float metallic = 0.0f;
+		float emissive = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		emissive = emissive > 0.99 ? 1 : 0;
+		float refractiveIndex = 1.0f;
+		Vector4 materialColor(materialColorR, materialColorG, materialColorB, materialColorA);
+		Material newMat(materialColor, roughness, metallic, emissive, refractiveIndex);
+		mA.push_back(newMat);
+	}
+	return mA;
+}
+void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], unsigned int dimensions[], unsigned int meshIndex) {
+	for (unsigned int i = 0; i < dimensions[0]; i++) {
+		for (unsigned int j = 0; j < dimensions[1]; j++) {
+			for (unsigned int k = 0; k < dimensions[2]; k++) {
+				BatchedInfo newBatchedInfo = (*batchedInfos)[meshIndex];
+				float posX = 2*((float)(i+0.5)/(float)dimensions[0]-0.5)*bounds[0];
+				float posY = 2*((float)(j+0.5) / (float)dimensions[1] - 0.5) * bounds[1];
+				float posZ = 2*((float)(k + 0.5) / (float)dimensions[2] - 0.5) * bounds[2];
+				newBatchedInfo.position[0] =posX;
+				newBatchedInfo.position[1] = posY;
+				newBatchedInfo.position[2] = posZ;
+				newBatchedInfo.materialIndex= floor(10*static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+				batchedInfos->push_back(newBatchedInfo);
+			}
+		}
+	}
+}
 int main()
 {
 	float bound[3] = { 10.f,3.f,10.f };
@@ -664,10 +710,22 @@ int main()
 	spheres[9].material.emissive = 4;
 	//Draw(spheres);
 	std::vector<Mesh> mesh = ScanForMesh("Cube.mesh");
+	std::vector<Material> materials;
+
 	Mesh batchedMesh = BatchMesh(mesh);
 	Vector3 vec3(1, 1, 1);
-	batchedMesh.batchedInfos[0].position = vec3;
+	float temp[3] = { 0,0,0 };
+
+	//Instantiate meshes
+	float bounds[3] = { 10.f,1.f,5.f };
+	unsigned int dimensions[3] = {2,1,1 };
+
+	InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,0);
+	batchedMesh.batchedInfos[0].position[1] = 2.f;
+	batchedMesh.batchedInfos[0].materialIndex = 10;
+	std::vector<Material> materialArray = CreateMaterialArray(11);
+	//materialArray[10].emissive = 4;
 	//PrintMesh(mesh[0]);
-	DrawBatchedMesh(batchedMesh);
+	DrawBatchedMesh(batchedMesh,materialArray);
 	return 0;
 }

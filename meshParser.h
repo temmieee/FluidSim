@@ -19,6 +19,8 @@ struct Vector3
 struct Vector4
 {
 	GLfloat x, y, z, w;
+	Vector4();
+	Vector4(float inX, float inY, float inZ, float inW);
 };
 struct Material {
 	Vector4 color;
@@ -26,6 +28,8 @@ struct Material {
 	float metallic;
 	float emissive;
 	float refractiveIndex;
+	Material();
+	Material(Vector4 inCol, float inRoughness, float inMetallic, float inEmissive, float inRefractiveIndex);
 };
 struct Vertex {
 	float position[3];
@@ -53,16 +57,16 @@ struct Face {
 
 };
 struct BatchedInfo {
+	float position[3];
 	unsigned int startFace;
+	float rotation[3];
 	unsigned int facesAmount;
-	unsigned int materialIndex;
-	unsigned int priorityIndex;
-	Vector3 position;
-	Vector3 rotation;
-	Vector3 scale;
+	float scale[3];
+	int materialIndex;
 	float padding[3];
+	unsigned int priorityIndex;
 	BatchedInfo();
-	BatchedInfo(unsigned int sFace, unsigned int fAmount, unsigned int mIndex, unsigned int prioIndex, Vector3 pos, Vector3 rot, Vector3 s);
+	BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, float pos[], float rot[], float s[]);
 };
 struct Mesh {
 public:
