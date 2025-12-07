@@ -101,7 +101,7 @@ void main()
 	float y = float(pixelCoords.y*2-float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x*2-float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 2.0, -10f);
+	vec3 cameraPos = vec3(0, 2.0, -15f);
 	vec3 rayOrigin= cameraPos+vec3(x, y,atan(halffov*3.14/180));
 	vec3 rayDir = normalize(rayOrigin-cameraPos);
 	
@@ -114,7 +114,7 @@ void main()
 	{
 		vec3 tempCol=vec3(1,1,1);
 		vec3 tempLight=vec3(0,0,0);
-		rayOrigin= cameraPos+vec3(x, y,atan(halffov*3.14/180));
+		rayOrigin= cameraPos+vec3(x, y,1/tan(halffov*3.14/180));
 		rayDir = normalize(rayOrigin-cameraPos);
 		for (int j=0;j<10;j++)
 		{
@@ -130,9 +130,9 @@ void main()
 				break;
 			}
 			hitInfo=tempHitInfo;
-			rayOrigin=hitInfo.position+hitInfo.normal*0.0;
+			rayOrigin=hitInfo.position+hitInfo.normal*0.01;
 			uint rng=pixelCoords.x+pixelCoords.y*dimensions.x+dimensions.x*dimensions.y*i;
-			rayDir=normalize(reflect(rayDir,hitInfo.normal)+GetRandomDirection(rng)*hitInfo.material.roughness);;
+			rayDir=normalize(reflect(rayDir,hitInfo.normal)+GetRandomDirection(rng)*hitInfo.material.roughness);
 			tempLight+=hitInfo.material.emissive*tempCol;
 			tempCol*=data[hitInfo.sphereIndex].color.xyz;
 		}

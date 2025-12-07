@@ -161,13 +161,13 @@ void Draw(std::vector<Sphere> spheresArray) {
 		auto start = std::chrono::high_resolution_clock::now();
 		computeShader.Activate();
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, spheresBuffer);
-		glUniform1f(halffov, 75);
+		glUniform1f(halffov, 30);
 		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
 		const char* texture = "screen";
-		screenShader.GetTexture(texture);
+		screenShader.GetTexture(texture,0);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 		auto stop = std::chrono::high_resolution_clock::now();
@@ -284,7 +284,7 @@ void DrawDensity(std::vector<Sphere> spheresArray) {
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
 		const char* texture = "screen";
-		screenShader.GetTexture(texture);
+		screenShader.GetTexture(texture,0);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 
@@ -370,143 +370,12 @@ void PrintMesh(Mesh m) {
 	for (unsigned int i = 0; i < m.faces.size(); i++) {
 		std::cout << "Face" << (int)i << " ";
 		for (char j = 0; j < m.faces[i].indicesGroups.size(); j++) {
-			PrintArray(m.faces[i].indicesGroups[j].indicies, 3);
+			PrintArray(m.faces[i].indicesGroups[j].indices, 3);
 		}
 		std::cout << "\n";
 	}
 }
-void DrawMesh(std::vector<Mesh> meshes) {
-	Mesh m = meshes[0];
-	
-	glfwInit();
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR_VERSION);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Temmie", NULL, NULL);
-	if (!window)
-	{
-		std::cout << "Failed to create the GLFW window\n";
-		glfwTerminate();
-	}
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(vSync);
-
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		std::cout << "Failed to initialize OpenGL context" << std::endl;
-	}
-	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-
-	GLuint VAO, VBO, EBO;
-	glCreateVertexArrays(1, &VAO);
-	glCreateBuffers(1, &VBO);
-	glCreateBuffers(1, &EBO);
-
-	glNamedBufferData(VBO, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glNamedBufferData(EBO, sizeof(indices), indices, GL_STATIC_DRAW);
-
-	glEnableVertexArrayAttrib(VAO, 0);
-	glVertexArrayAttribBinding(VAO, 0, 0);
-	glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
-
-	glEnableVertexArrayAttrib(VAO, 1);
-	glVertexArrayAttribBinding(VAO, 1, 0);
-	glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat));
-
-	glVertexArrayVertexBuffer(VAO, 0, VBO, 0, 5 * sizeof(GLfloat));
-	glVertexArrayElementBuffer(VAO, EBO);
-
-
-	GLuint screenTex;
-	glCreateTextures(GL_TEXTURE_2D, 1, &screenTex);
-	glTextureParameteri(screenTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(screenTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-
-	Shader screenShader("default.vert", "default.frag");
-	float input1 = 0.5;
-	float input2 = 0.75;
-	float input3 = 1;
-
-	//spheresArray = spheres;
-	Shader computeShader("finalComputeShader.compute");
-	//meshBuffer
-	GLuint vertexBuffer;
-	glCreateBuffers(1, &vertexBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, vertexBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, m.vertices.size() * sizeof(Vertex), m.vertices.data(), GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	
-	GLuint normalBuffer;
-	glCreateBuffers(1, &normalBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, normalBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, m.normals.size() * sizeof(Normal), m.normals.data(), GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-
-	//convert this to something the GPU could understand
-	std::vector<IndiciesGroup> tempFace;
-	for (Face faceArray : m.faces) {
-		for (IndiciesGroup iG : faceArray.indicesGroups) {
-			tempFace.push_back(iG);
-		}
-	}
-	GLuint faceBuffer;
-	glCreateBuffers(1, &faceBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, faceBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, tempFace.size()*sizeof(IndiciesGroup), tempFace.data(), GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	void* tempPointer = m.faces.data();
-
-
-	GLuint halffov = glGetUniformLocation(computeShader.ID, "halffov");
-
-	PrintSpecs();
-
-
-	while (!glfwWindowShouldClose(window))
-	{
-		auto start = std::chrono::high_resolution_clock::now();
-		computeShader.Activate();
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
-		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
-		glUniform1f(halffov, 75);
-		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		screenShader.Activate();
-		glBindTextureUnit(0, screenTex);
-		const char* texture = "screen";
-		screenShader.GetTexture(texture);
-		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
-		auto stop = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-		std::cout << "Render time: " << duration.count() << " microseconds" << std::endl;
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
-	glDeleteBuffers(1, &EBO);
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	computeShader.Delete();
-	screenShader.Delete();
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-
-}
 void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 
 	glfwInit();
@@ -561,7 +430,25 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
-	Shader screenShader("default.vert", "default.frag");
+	GLuint progressiveTex1;
+	glCreateTextures(GL_TEXTURE_2D, 1, &progressiveTex1);
+	glTextureParameteri(progressiveTex1, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(progressiveTex1, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(progressiveTex1, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(progressiveTex1, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(progressiveTex1, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glBindImageTexture(1, progressiveTex1, 0, GL_FALSE, 0, GL_DYNAMIC_DRAW, GL_RGBA32F);
+
+	GLuint progressiveTex2;
+	glCreateTextures(GL_TEXTURE_2D, 1, &progressiveTex2);
+	glTextureParameteri(progressiveTex2, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(progressiveTex2, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(progressiveTex2, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(progressiveTex2, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(progressiveTex2, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glBindImageTexture(2, progressiveTex2, 0, GL_FALSE, 0, GL_DYNAMIC_DRAW, GL_RGBA32F);
+
+	Shader screenShader("default.vert", "progressiveRender.frag");
 	float input1 = 0.5;
 	float input2 = 0.75;
 	float input3 = 1;
@@ -585,16 +472,16 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 
 
 	//convert this to something the GPU could understand
-	std::vector<IndiciesGroup> tempFace;
+	std::vector<IndicesGroup> tempFace;
 	for (Face faceArray : m.faces) {
-		for (IndiciesGroup iG : faceArray.indicesGroups) {
+		for (IndicesGroup iG : faceArray.indicesGroups) {
 			tempFace.push_back(iG);
 		}
 	}
 	GLuint faceBuffer;
 	glCreateBuffers(1, &faceBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, faceBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, tempFace.size() * sizeof(IndiciesGroup), tempFace.data(), GL_STATIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, tempFace.size() * sizeof(IndicesGroup), tempFace.data(), GL_STATIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -619,26 +506,29 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	GLuint objectAmount = glGetUniformLocation(computeShader.ID, "objectAmount");
 
 	PrintSpecs();
-
-
+	
+	bool draw = true;
 	while (!glfwWindowShouldClose(window))
 	{
 		auto start = std::chrono::high_resolution_clock::now();
-		computeShader.Activate();
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
-		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
-		glUniform1f(halffov, 75);
-		glUniform1ui(objectAmount, m.batchedInfos.size());
-		glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		if (draw) {
+			computeShader.Activate();
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
+			glUniform1f(halffov, 40);
+			glUniform1ui(objectAmount, m.batchedInfos.size());
+			glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			draw = false;
+		}
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
 		const char* texture = "screen";
-		screenShader.GetTexture(texture);
+		screenShader.GetTexture(texture,0);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 		auto stop = std::chrono::high_resolution_clock::now();
@@ -664,10 +554,10 @@ std::vector<Material> CreateMaterialArray(int howMany) {
 		float materialColorG = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		float materialColorB = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		float materialColorA = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		float roughness = 1.0f;
+		float roughness =1.0f;
 		float metallic = 0.0f;
 		float emissive = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		emissive = emissive > 0.99 ? 1 : 0;
+		emissive = 0;
 		float refractiveIndex = 1.0f;
 		Vector4 materialColor(materialColorR, materialColorG, materialColorB, materialColorA);
 		Material newMat(materialColor, roughness, metallic, emissive, refractiveIndex);
@@ -675,7 +565,7 @@ std::vector<Material> CreateMaterialArray(int howMany) {
 	}
 	return mA;
 }
-void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], unsigned int dimensions[], unsigned int meshIndex) {
+void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], unsigned int dimensions[], float center[], unsigned int meshIndex) {
 	for (unsigned int i = 0; i < dimensions[0]; i++) {
 		for (unsigned int j = 0; j < dimensions[1]; j++) {
 			for (unsigned int k = 0; k < dimensions[2]; k++) {
@@ -683,14 +573,39 @@ void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], u
 				float posX = 2*((float)(i+0.5)/(float)dimensions[0]-0.5)*bounds[0];
 				float posY = 2*((float)(j+0.5) / (float)dimensions[1] - 0.5) * bounds[1];
 				float posZ = 2*((float)(k + 0.5) / (float)dimensions[2] - 0.5) * bounds[2];
-				newBatchedInfo.position[0] =posX;
-				newBatchedInfo.position[1] = posY;
-				newBatchedInfo.position[2] = posZ;
-				newBatchedInfo.materialIndex= floor(10*static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+				newBatchedInfo.position[0] =posX+center[0];
+				newBatchedInfo.position[1] = posY + center[1];
+				newBatchedInfo.position[2] = posZ + center[2];
+				newBatchedInfo.scale[0] = 0.5;
+				newBatchedInfo.scale[1] = 0.5;
+				newBatchedInfo.scale[2] = 0.5;
+				newBatchedInfo.materialIndex= floor(9*static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 				batchedInfos->push_back(newBatchedInfo);
 			}
 		}
 	}
+}
+void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], unsigned int dimensions[], float center[], unsigned int meshIndex) {
+	//floor and ceiling
+	for (char i = 0; i < 3; i++) {
+		for (char j = 0; j < 2; j++) {
+			BatchedInfo newBatchedInfo = (*batchedInfos)[meshIndex];
+			float pos = 2 * ((float)(j + 0.5) / 2 - 0.5) * bounds[i]+center[i];
+			newBatchedInfo.position[i] = pos;
+			for (char k = 0; k < 3; k++) {
+				if (k != i) {
+					newBatchedInfo.scale[k] = bounds[k];
+				}
+				else {
+					newBatchedInfo.scale[k] = 0.1;
+				}
+			}
+			newBatchedInfo.materialIndex = floor(9 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+			batchedInfos->push_back(newBatchedInfo);
+		}
+
+	}
+
 }
 int main()
 {
@@ -705,11 +620,11 @@ int main()
 	spheres[0].material.emissive = 4;
 	spheres[1].position.y = -100.76;
 	spheres[1].position.z = 0;
-	spheres[1].radius = 100;
+	spheres[1].radius = 250;
 	spheres[1].material.roughness = 1;
 	spheres[9].material.emissive = 4;
 	//Draw(spheres);
-	std::vector<Mesh> mesh = ScanForMesh("Cube.mesh");
+	std::vector<Mesh> mesh = ScanForMesh("Monkey.mesh");
 	std::vector<Material> materials;
 
 	Mesh batchedMesh = BatchMesh(mesh);
@@ -717,14 +632,28 @@ int main()
 	float temp[3] = { 0,0,0 };
 
 	//Instantiate meshes
-	float bounds[3] = { 10.f,1.f,5.f };
-	unsigned int dimensions[3] = {2,1,1 };
+	float bounds[3] = { 2.f,1.f,2.f };
+	float center[3] = { 0,-1,0 };
+	float centerWall[3] = { 0,0,0 };
+	float walls[3] = { 5.f,5.f,5.f };
+	unsigned int dimensions[3] = {2,1,2 };
 
-	InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,0);
-	batchedMesh.batchedInfos[0].position[1] = 2.f;
+	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
+	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
+	batchedMesh.batchedInfos[0].position[1] = 2.4f;
+	batchedMesh.batchedInfos[0].scale[0] = 1.f;
+	batchedMesh.batchedInfos[0].scale[1] = 0.1f;
+	batchedMesh.batchedInfos[0].scale[2] = 1.f;
 	batchedMesh.batchedInfos[0].materialIndex = 10;
-	std::vector<Material> materialArray = CreateMaterialArray(11);
-	//materialArray[10].emissive = 4;
+	batchedMesh.batchedInfos[1].position[1] = -0.5f;
+	batchedMesh.batchedInfos[1].scale[0] = 1.5;
+	batchedMesh.batchedInfos[1].scale[1] = 1.5;
+	batchedMesh.batchedInfos[1].scale[2] = 1.5;
+	batchedMesh.batchedInfos[1].materialIndex = 11;
+	std::vector<Material> materialArray = CreateMaterialArray(12);
+	materialArray[10].emissive = 10;
+	materialArray[11].color = Vector4(1.f, 1, 1, 1.f);
+	materialArray[11].roughness =1;
 	//PrintMesh(mesh[0]);
 	DrawBatchedMesh(batchedMesh,materialArray);
 	return 0;

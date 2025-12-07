@@ -1,0 +1,15 @@
+#version 460 core
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+layout(rgba32f, binding = 1) uniform image2D progTex;
+uniform sampler2D prog;
+uniform sampler2D screen;
+uniform uint progress;
+void main(){
+	ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+	//ivec2 dimensions = imageSize(progressiveTex1);
+	//vec4 pixel=texture(screen,pixelCoords);
+	//vec4 progPixel=texture(prog,pixelCoords);
+	vec4 result=vec4(1,0,0,1);
+	imageStore(progTex, pixelCoords, result);
+	
+}

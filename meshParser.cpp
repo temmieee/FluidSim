@@ -65,7 +65,7 @@ unsigned int GetIndex(std::string* stream)
 	}
 	return std::stoi(tempString)-1;
 }
-IndiciesGroup ReadNextIndexGroup(std::string* stream)
+IndicesGroup ReadNextIndexGroup(std::string* stream)
 {
 	std::string tempString = *stream;
 	if (tempString.find(' ')!= std::string::npos)
@@ -82,11 +82,11 @@ IndiciesGroup ReadNextIndexGroup(std::string* stream)
 		}
 		*stream = stream->substr(begin + 1);
 	}
-	IndiciesGroup indiciesGroup;
+	IndicesGroup indicesGroup;
 	for (char i = 0; i < 3; i++) {
-		indiciesGroup.indicies[i] = GetIndex(&tempString);
+		indicesGroup.indices[i] = GetIndex(&tempString);
 	}
-	return indiciesGroup;
+	return indicesGroup;
 }
 Vertex::Vertex(std::string line)
 {
@@ -112,7 +112,7 @@ Face::Face(std::string line)
 		indicesGroups.push_back(ReadNextIndexGroup(&line));
 	}
 }
-Face::Face(IndiciesGroup first, IndiciesGroup second, IndiciesGroup third) {
+Face::Face(IndicesGroup first, IndicesGroup second, IndicesGroup third) {
 	indicesGroups.push_back(first);
 	indicesGroups.push_back(second);
 	indicesGroups.push_back(third);
@@ -135,6 +135,7 @@ BatchedInfo::BatchedInfo() {
 		position[i] = 0;
 		rotation[i] = 0;
 		scale[i] = 0;
+		padding[i] = 0;
 	}
 }
 BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, float pos[], float rot[], float s[]) {
@@ -146,6 +147,7 @@ BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, u
 		position[i] = pos[i];
 		rotation[i] = rot[i];
 		scale[i] = s[i];
+		padding[i] = 0;
 	}
 }
 Mesh BatchMesh(std::vector<Mesh> meshes) {
@@ -158,6 +160,9 @@ Mesh BatchMesh(std::vector<Mesh> meshes) {
 		temp[2] = 0;
 		BatchedInfo batchedInfo(0,0,0,0,temp,temp,temp);
 		batchedInfo.startFace = curFaceIndex;
+		unsigned int currentVerticesSize = batchedMesh.vertices.size();
+		unsigned int currentNormalSize = batchedMesh.normals.size();
+		unsigned int currentUVsSize = batchedMesh.normals.size();
 		for (unsigned int i=0; i < meshes[meshIndex].vertices.size(); i++) {
 			batchedMesh.vertices.push_back(meshes[meshIndex].vertices[i]);
 		}
@@ -168,6 +173,12 @@ Mesh BatchMesh(std::vector<Mesh> meshes) {
 			batchedMesh.uvs.push_back(meshes[meshIndex].uvs[i]);
 		}
 		for (unsigned int i = 0; i < meshes[meshIndex].faces.size(); i++) {
+			for (char j=0;j<3;j++){
+					meshes[meshIndex].faces[i].indicesGroups[j].indices[0] += currentVerticesSize;
+					meshes[meshIndex].faces[i].indicesGroups[j].indices[1] += currentNormalSize;
+					meshes[meshIndex].faces[i].indicesGroups[j].indices[2] += currentUVsSize;
+
+			}
 			batchedMesh.faces.push_back(meshes[meshIndex].faces[i]);
 			curFaceIndex++;
 		}

@@ -45,14 +45,14 @@ struct UV {
 	float uv[2];
 	UV(std::string line);
 };
-struct IndiciesGroup {
+struct IndicesGroup {
 	//position,normal,uv
-	int indicies[3];
+	int indices[3];
 	int objectIndex=0;
 };
 struct Face {
-	std::vector<IndiciesGroup> indicesGroups;
-	Face(IndiciesGroup first, IndiciesGroup second, IndiciesGroup third);
+	std::vector<IndicesGroup> indicesGroups;
+	Face(IndicesGroup first, IndicesGroup second, IndicesGroup third);
 	Face(std::string line);
 
 };
@@ -81,6 +81,6 @@ Mesh BatchMesh(std::vector<Mesh> meshes);
 std::vector<Mesh> ScanForMesh(const char* meshFile);
 float ReadNextNumber(std::string* stream);
 unsigned int GetIndex(std::string* stream);
-IndiciesGroup ReadNextIndexGroup(std::string* stream);
+IndicesGroup ReadNextIndexGroup(std::string* stream);
 std::vector<Face> TriangulateFace(Face face);
 #endif

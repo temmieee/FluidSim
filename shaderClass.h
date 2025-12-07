@@ -16,6 +16,6 @@ public:
 	Shader(const char* computeFile);
 	void Activate();
 	void Delete();
-	void GetTexture(const char* texture);
+	void GetTexture(const char* texture, unsigned int textureIndex);
 };
 #endif

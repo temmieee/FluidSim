@@ -52,7 +52,7 @@ void Shader::Activate() {
 void Shader::Delete() {
 	glDeleteProgram(ID);
 }
-void Shader::GetTexture(const char* texture) {
+void Shader::GetTexture(const char* texture, unsigned int textureIndex) {
 
-	glUniform1i(glGetUniformLocation(ID, texture), 0);
+	glUniform1i(glGetUniformLocation(ID, texture), textureIndex);
 }
