@@ -58,12 +58,16 @@ float ReadNextNumber(std::string* stream)
 unsigned int GetIndex(std::string* stream)
 {
 	std::string tempString = *stream;
-	if (char end = tempString.find('/'))
+	if (tempString.find('/') != std::string::npos)
 	{
+		char end = tempString.find('/');
 		tempString = tempString.substr(0, end);
 		*stream = stream->substr(end + 1);
 	}
-	return std::stoi(tempString)-1;
+	if (!tempString.empty()) {
+		return std::stoi(tempString) - 1;
+	}
+	return 0;
 }
 IndicesGroup ReadNextIndexGroup(std::string* stream)
 {

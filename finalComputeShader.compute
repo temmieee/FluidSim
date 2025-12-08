@@ -57,7 +57,9 @@ struct HitInfo {
 };
 
 
-
+layout(std430, binding = 1) buffer colorBuffer {
+	vec4 colorData[];
+};
 layout(std430, binding = 2) buffer vertexBuffer {
 	vec4 vertexData[];
 };
@@ -79,6 +81,7 @@ layout(std430, binding = 7) buffer materialBuffer {
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 uniform uint objectAmount;
+uniform uint progress;
 uint NextRandom(inout uint state)
 {
 	state = state * 747796405 + 2891336453;
@@ -190,7 +193,7 @@ void main()
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 0, -3f);
+	vec3 cameraPos = vec3(0, -0.5, -3.5f);
 	vec3 rayOrigin = cameraPos + vec3(x, y, atan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
@@ -203,11 +206,11 @@ void main()
 	{
 		vec3 tempCol = vec3(1, 1, 1);
 		vec3 tempLight = vec3(0, 0, 0);
-		uint rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * i*523454536;
+		uint rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * i* progress;
 		vec3 randomDir= GetRandomDirection(rng);
 		rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
-		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.001);
-		for (int j = 0; j <11; j++)
+		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.0001);
+		for (int j = 0; j <10; j++)
 		{
 			Ray ray;
 			ray.origin = rayOrigin;
@@ -219,7 +222,7 @@ void main()
 				//hitInfo.normal = vec3(0, 0, 0);
 				break;
 			}
-			rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * (i+j)*523454536;
+			rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * (i+j+progress);
 			randomDir= GetRandomDirection(rng);
 			
 			rayDir = normalize(mix(reflect(rayDir,hitInfo.normal),normalize(hitInfo.normal*1+randomDir*1 ),materialData[hitInfo.objectIndex].roughness));
@@ -237,10 +240,24 @@ void main()
 		light += tempLight / repetition;
 	}
 	pixel = vec4(light,1.0);
-	//pixel=vec4(light, 1.0);
+	vec4 previousCol=colorData[pixelCoords.x + pixelCoords.y * dimensions.x];
+	vec4 outColor = previousCol * progress / (progress + 1) + pixel / (progress + 1);
+	colorData[pixelCoords.x + pixelCoords.y * dimensions.x] = outColor;
+	if (progress == 100) {
+		//colorData[pixelCoords.x + pixelCoords.y * dimensions.x] = pixel;
+	}
+	vec4 blurColor = vec4(0, 0, 0, 0);
+	int blurAmount = 0;
+	for (int i = -blurAmount; i <= blurAmount; i++) {
+		for (int j = -blurAmount; j <= blurAmount; j++) {
+			blurColor += colorData[max(0, pixelCoords.x + i) + max(0, pixelCoords.y + j) * dimensions.x];
+		}
+	}
+	uint blurPixels = ((blurAmount * 2 + 1) * (blurAmount * 2 + 1));
+	blurColor.xyz = blurColor.xyz / (blurPixels*4)+outColor.xyz*3/4;
+	//pixel = vec4(float(pixelCoords.x)/ float(dimensions.x), float(pixelCoords.y)/ float(dimensions.y), 0, 1);
 	//uint rng=pixelCoords.x+pixelCoords.y*dimensions.x;
 	//pixel=vec4(GetRandomDirection(rng),1);
-
-	imageStore(screen, pixelCoords, pixel);
+	imageStore(screen, pixelCoords, blurColor);
 
 }
