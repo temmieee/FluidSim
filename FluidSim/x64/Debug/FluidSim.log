@@ -1,36 +1,46 @@
 ﻿  Main.cpp
-D:\Cdev\FluidSim\FluidSim\Main.cpp(178,50): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(178,25): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(289,49): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(289,25): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,29): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,29): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,65): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,65): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,101): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
-D:\Cdev\FluidSim\FluidSim\Main.cpp(322,101): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(330,18): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(336,27): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
-D:\Cdev\FluidSim\FluidSim\Main.cpp(358,26): warning C4305: '=': truncation from 'double' to 'GLfloat'
-glfw3.lib(init.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(init.obj)' or at ''; linking object as if no debug info
-glfw3.lib(window.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(window.obj)' or at ''; linking object as if no debug info
-glfw3.lib(context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(input.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(input.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_time.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_time.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_thread.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_thread.obj)' or at ''; linking object as if no debug info
-glfw3.lib(platform.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(platform.obj)' or at ''; linking object as if no debug info
-glfw3.lib(monitor.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(monitor.obj)' or at ''; linking object as if no debug info
-glfw3.lib(vulkan.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(vulkan.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_init.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_init.obj)' or at ''; linking object as if no debug info
-glfw3.lib(null_init.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(null_init.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_module.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_module.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_monitor.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_window.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_window.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_joystick.obj)' or at ''; linking object as if no debug info
-glfw3.lib(wgl_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(wgl_context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(egl_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(egl_context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(osmesa_context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(null_monitor.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(null_monitor.obj)' or at ''; linking object as if no debug info
-glfw3.lib(null_window.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(null_window.obj)' or at ''; linking object as if no debug info
-glfw3.lib(null_joystick.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(null_joystick.obj)' or at ''; linking object as if no debug info
+D:\Cdev\FluidSim\FluidSim\Main.cpp(165,50): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(165,25): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(276,49): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(276,25): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,29): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,29): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,65): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,65): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,101): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
+D:\Cdev\FluidSim\FluidSim\Main.cpp(309,101): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(317,18): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(323,33): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(538,50): warning C4267: 'argument': conversion from 'size_t' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(540,51): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(540,26): warning C4244: 'argument': conversion from 'double' to 'GLuint', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(591,16): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(592,16): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(593,16): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(600,40): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(611,14): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(618,32): warning C4305: '=': truncation from 'double' to 'float'
+D:\Cdev\FluidSim\FluidSim\Main.cpp(621,40): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+D:\Cdev\FluidSim\FluidSim\Main.cpp(639,26): warning C4305: '=': truncation from 'double' to 'GLfloat'
+glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(init.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(window.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(context.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(input.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_time.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_time.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_thread.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_thread.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(platform.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(platform.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(monitor.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(monitor.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(vulkan.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(vulkan.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_init.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_init.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(null_init.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(null_init.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_module.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_module.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_monitor.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_window.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_window.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(win32_joystick.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(wgl_context.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(wgl_context.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(egl_context.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(egl_context.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(osmesa_context.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(null_monitor.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(null_monitor.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(null_window.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(null_window.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
+glfw3.lib(null_joystick.obj) : warning LNK4099: PDB 'glfw3.pdb' was not found with 'glfw3.lib(null_joystick.obj)' or at 'D:\Cdev\FluidSim\FluidSim\x64\Debug\glfw3.pdb'; linking object as if no debug info
   FluidSim.vcxproj -> D:\Cdev\FluidSim\FluidSim\x64\Debug\FluidSim.exe
