@@ -36,6 +36,9 @@
     <ClCompile Include="VAO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="meshParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="default.vert">
@@ -64,6 +67,9 @@
       <Filter>Resource Files\Shader</Filter>
     </Text>
     <Text Include="physicHandler.compute">
+      <Filter>Resource Files\Shader</Filter>
+    </Text>
+    <Text Include="finalComputeShader.compute">
       <Filter>Resource Files\Shader</Filter>
     </Text>
   </ItemGroup>

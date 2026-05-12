@@ -8,12 +8,7 @@ vec3 GetWeight(vec3 p,vec3 v0, vec3 v1, vec3 v2) {
 }
 
 vec3 Lerp3(vec3 v0, vec3 v1, vec3 v2, float a, float b, float c) {
-	// Ensure weights sum to 1 for a true barycentric interpolation
-	// If a, b, c are already normalized (a + b + c = 1), this step is not needed.
-	// float sum_weights = a + b + c;
-	// a /= sum_weights;
-	// b /= sum_weights;
-	// c /= sum_weights;
+
 
 	return v0 * a + v1 * b + v2 * c;
 }
@@ -147,11 +142,11 @@ HitInfo GetHitInfoFromRay(Ray ray)
 			// Compute the intersection point using equation 1
 			vec3 P = ray.origin + t * ray.direction;
 			vec3 Ne;// Vector perpendicular to triangle's plane
-			 // Test sidedness of P w.r.t. edge v0v1
+			 // Test sidedness of edge v0v1
 			vec3 v0p = P - v0;
 			Ne = cross(v0v1, v0p);
 			if (dot(N, Ne) < 0) continue;
-			// Test sidedness of P w.r.t. edge v2v1
+			// Test sidedness of edge v2v1
 			vec3 v2v1 = v2 - v1;
 			vec3 v1p = P - v1;
 			Ne = cross(v2v1, v1p);

@@ -523,8 +523,9 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	unsigned int prog = 0;
 	while (!glfwWindowShouldClose(window))
 	{
-		auto start = std::chrono::high_resolution_clock::now();
-		if (prog<99999999) {
+		
+		if (prog<10) {
+			auto start = std::chrono::high_resolution_clock::now();
 			computeShader.Activate();
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, colorBuffer);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
@@ -541,6 +542,9 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 			
 			prog++;
 			std::cout << prog << "\n";
+			auto stop = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+			std::cout << "Render time: " << duration.count() << " microseconds" << std::endl;
 		}
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
@@ -548,9 +552,6 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 		screenShader.GetTexture(texture,0);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
-		auto stop = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-		std::cout << "Render time: " << duration.count() << " microseconds" << std::endl;
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
