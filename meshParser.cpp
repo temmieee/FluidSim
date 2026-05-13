@@ -142,7 +142,7 @@ BatchedInfo::BatchedInfo() {
 		padding[i] = 0;
 	}
 }
-BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, float pos[], float rot[], float s[]) {
+BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]) {
 	startFace = sFace;
 	facesAmount = fAmount;
 	materialIndex = mIndex;
@@ -151,9 +151,62 @@ BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, u
 		position[i] = pos[i];
 		rotation[i] = rot[i];
 		scale[i] = s[i];
-		padding[i] = 0;
+		if (i<2) padding[i] = 0;
 	}
 }
+BVHnode::BVHnode() {
+	for (char i = 0; i++; i < 3) {
+		maxBound[i] = 0;
+		minBound[i] = 0;
+		index = 0;
+		amount = 0;
+	}
+}
+BVHnode::BVHnode(float inMax[], float inMin[], int inIndex, int inAmount) {
+	for (char i = 0; i < 3; i++) {
+		maxBound[i] = inMax[i];
+		minBound[i] = inMin[i];
+	}
+	index = inIndex;
+	amount = inAmount;
+}
+void ConstructBVH(Mesh* inMesh, unsigned int batchedInfoIndex, unsigned int firstFace, unsigned int facesAmount) {
+	float tempMaxBound[3] = { -999999999,-999999999,-999999999 };
+	float tempMinBound[3] = { 999999999,999999999,999999999 };
+	for (unsigned int i = firstFace; i < firstFace + facesAmount; i++) {
+		for (char dimension = 0; dimension < 3; dimension++) {
+			tempMaxBound[dimension] = tempMaxBound[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBound[dimension] : inMesh->faces[i].maxPosition[dimension];
+			tempMinBound[dimension] = tempMinBound[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBound[dimension] : inMesh->faces[i].minPosition[dimension];
+		}
+	}
+	BVHnode bvhNode(tempMaxBound, tempMinBound, firstFace, facesAmount);
+	inMesh->bvh.push_back(bvhNode);
+}
+void ConstructBVHFromMesh(Mesh* inMesh) {
+
+	for (unsigned int i = 0; i < inMesh->faces.size(); i++) {
+		float tempAveragePos[3] = { 0,0,0 };
+		float tempMaxPos[3] = { -999999999,-999999999,-999999999 };
+		float tempMinPos[3] = { 999999999,999999999,999999999 };
+		for (char iVertex = 0; iVertex < 3; iVertex++) {
+			for (char dimension = 0; dimension < 3; dimension++) {
+				float curPosition = inMesh->vertices[inMesh->faces[i].indicesGroups[iVertex].indices[0]].position[dimension];
+				tempAveragePos[dimension] += curPosition/3;
+				tempMaxPos[dimension] = tempMaxPos[dimension] > curPosition ? tempMaxPos[dimension] : curPosition;
+				tempMinPos[dimension] = tempMinPos[dimension] < curPosition ? tempMinPos[dimension] : curPosition;
+			}
+		}
+		for (char dimension = 0; dimension < 3; dimension++) {
+			inMesh->faces[i].averagePosition[dimension] = tempAveragePos[dimension];
+			inMesh->faces[i].maxPosition[dimension] = tempMaxPos[dimension];
+			inMesh->faces[i].minPosition[dimension] = tempMinPos[dimension];
+		}
+	}
+	for (unsigned int i = 0; i < inMesh->batchedInfos.size(); i++) {
+		ConstructBVH(inMesh, i, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
+	}
+}
+
 Mesh BatchMesh(std::vector<Mesh> meshes) {
 	Mesh batchedMesh;
 	unsigned int curFaceIndex=0;
@@ -162,7 +215,7 @@ Mesh BatchMesh(std::vector<Mesh> meshes) {
 		temp[0] = 0;
 		temp[1] = 0;
 		temp[2] = 0;
-		BatchedInfo batchedInfo(0,0,0,0,temp,temp,temp);
+		BatchedInfo batchedInfo(0,0,0,0,0,temp,temp,temp);
 		batchedInfo.startFace = curFaceIndex;
 		unsigned int currentVerticesSize = batchedMesh.vertices.size();
 		unsigned int currentNormalSize = batchedMesh.normals.size();

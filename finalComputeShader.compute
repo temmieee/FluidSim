@@ -32,6 +32,12 @@ struct Sphere {
 struct UV {
 	float x, y;
 };
+struct BVHnode {
+	float maxBound[3];
+	float minBound[3];
+	int index;
+	int amount;
+};
 
 struct Object {
 	vec3 position;
@@ -40,7 +46,8 @@ struct Object {
 	uint facesAmount;
 	vec3 scale;
 	int materialIndex;
-	vec3 padding;
+	vec2 padding;
+	uint bvhIndex;
 	uint priorityIndex;
 };
 struct HitInfo {
@@ -73,6 +80,9 @@ layout(std430, binding = 6) buffer objectBuffer {
 layout(std430, binding = 7) buffer materialBuffer {
 	Material materialData[];
 };
+layout(std430, binding = 8) buffer bvhBuffer {
+	BVHnode bvhData[];
+};
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 uniform uint objectAmount;
@@ -103,6 +113,7 @@ vec3 GetRandomDirection(inout uint seed)
 	vec3 vec = normalize(vec3(x, y, z));
 	return vec;
 }
+
 HitInfo GetHitInfoFromRay(Ray ray)
 {
 	HitInfo hitInfo;
@@ -124,9 +135,9 @@ HitInfo GetHitInfoFromRay(Ray ray)
 		for (uint i = objectData[objIndex].startFace*3; i< (objectData[objIndex].startFace+objectData[objIndex].facesAmount) * 3;i+=3)
 		{
 							
-			vec3 v0 = vertexData[faceData[i].x].xyz*objectData[objIndex].scale.xyz+objectData[objIndex].position.xyz;
-			vec3 v1 = vertexData[faceData[i+1].x].xyz*objectData[objIndex].scale.xyz+objectData[objIndex].position.xyz;
-			vec3 v2 = vertexData[faceData[i+2].x].xyz*objectData[objIndex].scale.xyz+objectData[objIndex].position.xyz;
+			vec3 v0 = vertexData[faceData[i].x].xyz+objectData[objIndex].position.xyz;
+			vec3 v1 = vertexData[faceData[i+1].x].xyz+objectData[objIndex].position.xyz;
+			vec3 v2 = vertexData[faceData[i+2].x].xyz+objectData[objIndex].position.xyz;
 			vec3 v0v1 = v1 - v0;
 			vec3 v0v2 = v2 - v0;
 			vec3 N = cross(v0v1, v0v2);
@@ -188,7 +199,7 @@ void main()
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, -0.5, -3.5f);
+	vec3 cameraPos = vec3(0, 0, -3.5f);
 	vec3 rayOrigin = cameraPos + vec3(x, y, atan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
@@ -205,7 +216,7 @@ void main()
 		vec3 randomDir= GetRandomDirection(rng);
 		rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.0001);
-		for (int j = 0; j <10; j++)
+		for (int j = 0; j <1; j++)
 		{
 			Ray ray;
 			ray.origin = rayOrigin;
@@ -224,7 +235,7 @@ void main()
 			//rayDir=normalize(reflect(rayDir,hitInfo.normal)+randomDir*materialData[hitInfo.objectIndex].roughness);
 			rayOrigin = hitInfo.position + rayDir*0.00001;
 			tempLight += materialData[hitInfo.objectIndex].emissive * tempCol;
-			debug=hitInfo.position;
+			debug=hitInfo.normal;
 			tempCol *= materialData[hitInfo.objectIndex].col.xyz;
 			float p = max(tempCol.x, max(tempCol.y, tempCol.z));
 			if (RandomValue(rng) >= p) {
@@ -233,6 +244,7 @@ void main()
 			tempCol *= 1.0 / p; 
 		}
 		light += tempLight / repetition;
+		light = debug;
 	}
 	pixel = vec4(light,1.0);
 	vec4 previousCol=colorData[pixelCoords.x + pixelCoords.y * dimensions.x];

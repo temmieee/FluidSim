@@ -78,3 +78,8 @@ x86/
 *.obj
 .vs/FluidSim/v17/.suo
 .vs/FluidSim/v17
+Libraries/include/glad
+Libraries/lib
+x64/Debug
+glad.c
+FluidSim.vcxproj

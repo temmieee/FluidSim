@@ -514,6 +514,13 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	GLuint bvhBuffer;
+	glCreateBuffers(1, &bvhBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvhBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, m.bvh.size() * sizeof(BVHnode), m.bvh.data(), GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, bvhBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
 	GLuint halffov = glGetUniformLocation(computeShader.ID, "halffov");
 	GLuint objectAmount = glGetUniformLocation(computeShader.ID, "objectAmount");
 	GLuint progress = glGetUniformLocation(computeShader.ID, "progress");
@@ -534,6 +541,7 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, bvhBuffer);
 			glUniform1f(halffov, 40);
 			glUniform1ui(objectAmount, m.batchedInfos.size());
 			glUniform1ui(progress, prog);
@@ -627,25 +635,12 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 }
 int main()
 {
-	float bound[3] = { 10.f,3.f,10.f };
-	int amount =20;
-	std::vector<Sphere> spheres=CreateSphereArray(bound, &amount);
-	spheres[0].position.x = -15;
-	spheres[0].color = { 0.f,0.f,0.f,1.f };
-	spheres[0].position.z = -3;
-	spheres[0].position.y =10;
-	spheres[0].radius = 10;
-	spheres[0].material.emissive = 4;
-	spheres[1].position.y = -100.76;
-	spheres[1].position.z = 0;
-	spheres[1].radius = 250;
-	spheres[1].material.roughness = 1;
-	spheres[9].material.emissive = 4;
-	//Draw(spheres);
+
 	std::vector<Mesh> mesh = ScanForMesh("Kuromi.mesh");
 	std::vector<Material> materials;
 
 	Mesh batchedMesh = BatchMesh(mesh);
+	ConstructBVHFromMesh(&batchedMesh);
 	Vector3 vec3(1, 1, 1);
 	float temp[3] = { 0,0,0 };
 
@@ -657,22 +652,22 @@ int main()
 	unsigned int dimensions[3] = {2,1,2 };
 
 	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
-	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
-	batchedMesh.batchedInfos[0].position[1] = 2.4f;
-	batchedMesh.batchedInfos[0].position[2] = -0.0f;
-	batchedMesh.batchedInfos[0].scale[0] = 1.f;
-	batchedMesh.batchedInfos[0].scale[1] = 0.1f;
-	batchedMesh.batchedInfos[0].scale[2] = 1.f;
-	batchedMesh.batchedInfos[0].materialIndex = 10;
-	batchedMesh.batchedInfos[1].position[1] = -1.1f;
-	batchedMesh.batchedInfos[1].scale[0] = 1;
-	batchedMesh.batchedInfos[1].scale[1] = 1;
-	batchedMesh.batchedInfos[1].scale[2] = 1;
-	batchedMesh.batchedInfos[1].materialIndex = 11;
-	batchedMesh.batchedInfos[2].materialIndex = 12;
+	//InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
+	//batchedMesh.batchedInfos[0].position[1] = 0;
+	//batchedMesh.batchedInfos[0].position[2] = -0.0f;
+	//batchedMesh.batchedInfos[0].scale[0] = 1.f;
+	//batchedMesh.batchedInfos[0].scale[1] = 0.1f;
+	//batchedMesh.batchedInfos[0].scale[2] = 1.f;
+	//batchedMesh.batchedInfos[0].materialIndex = 10;
+	batchedMesh.batchedInfos[0].position[1] = -1.1f;
+	batchedMesh.batchedInfos[0].scale[0] = 1;
+	batchedMesh.batchedInfos[0].scale[1] = 1;
+	batchedMesh.batchedInfos[0].scale[2] = 1;
+	batchedMesh.batchedInfos[0].materialIndex = 11;
+	/*batchedMesh.batchedInfos[2].materialIndex = 12;
 	batchedMesh.batchedInfos[3].materialIndex = 12;
 	batchedMesh.batchedInfos[6].materialIndex = 12;
-	batchedMesh.batchedInfos[7].materialIndex = 12;
+	batchedMesh.batchedInfos[7].materialIndex = 12;*/
 	std::vector<Material> materialArray = CreateMaterialArray(13);
 	materialArray[10].emissive = 4;
 	materialArray[11].color = Vector4(1.f, 1, 1, 1.f);

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cerrno>
 #include <vector>
+
 struct Vector3
 {
 	GLfloat x, y, z;
@@ -52,6 +53,9 @@ struct IndicesGroup {
 };
 struct Face {
 	std::vector<IndicesGroup> indicesGroups;
+	float averagePosition[3];
+	float maxPosition[3];
+	float minPosition[3];
 	Face(IndicesGroup first, IndicesGroup second, IndicesGroup third);
 	Face(std::string line);
 
@@ -63,10 +67,19 @@ struct BatchedInfo {
 	unsigned int facesAmount;
 	float scale[3];
 	int materialIndex;
-	float padding[3];
+	float padding[2];
+	unsigned int bvhIndex;
 	unsigned int priorityIndex;
 	BatchedInfo();
-	BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, float pos[], float rot[], float s[]);
+	BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]);
+};
+struct BVHnode {
+	float maxBound[3];
+	float minBound[3];
+	int index;
+	int amount;
+	BVHnode();
+	BVHnode(float inMax[], float inMin[], int inIndex, int inAmount);
 };
 struct Mesh {
 public:
@@ -75,6 +88,7 @@ public:
 	std::vector<Normal> normals;
 	std::vector<UV> uvs;
 	std::vector<Face> faces;
+	std::vector<BVHnode> bvh;
 	std::vector<BatchedInfo> batchedInfos;
 };
 Mesh BatchMesh(std::vector<Mesh> meshes);
@@ -82,5 +96,7 @@ std::vector<Mesh> ScanForMesh(const char* meshFile);
 float ReadNextNumber(std::string* stream);
 unsigned int GetIndex(std::string* stream);
 IndicesGroup ReadNextIndexGroup(std::string* stream);
+void ConstructBVH(Mesh* inMesh, unsigned int batchedInfoIndex, unsigned int firstFace, unsigned int facesAmount);
+void ConstructBVHFromMesh(Mesh* inMesh);
 std::vector<Face> TriangulateFace(Face face);
 #endif
