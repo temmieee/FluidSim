@@ -83,3 +83,5 @@ Libraries/lib
 x64/Debug
 glad.c
 FluidSim.vcxproj
+x64/Debug
+FluidSim/x64/Debug
