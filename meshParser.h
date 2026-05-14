@@ -75,11 +75,11 @@ struct BatchedInfo {
 };
 struct BVHnode {
 	float maxBound[3];
-	float minBound[3];
 	int index;
+	float minBound[3];
 	int amount;
 	BVHnode();
-	BVHnode(float inMax[], float inMin[], int inIndex, int inAmount);
+	BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned int inAmount);
 };
 struct Mesh {
 public:
@@ -96,7 +96,8 @@ std::vector<Mesh> ScanForMesh(const char* meshFile);
 float ReadNextNumber(std::string* stream);
 unsigned int GetIndex(std::string* stream);
 IndicesGroup ReadNextIndexGroup(std::string* stream);
-void ConstructBVH(Mesh* inMesh, unsigned int batchedInfoIndex, unsigned int firstFace, unsigned int facesAmount);
+void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesAmount);
+void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, unsigned int facesAmount);
 void ConstructBVHFromMesh(Mesh* inMesh);
 std::vector<Face> TriangulateFace(Face face);
 #endif

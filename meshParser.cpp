@@ -1,4 +1,5 @@
 #include "meshParser.h"
+const int triangle = 5;
 Vector3::Vector3() {
 	x = 0;
 	y = 0;
@@ -135,11 +136,12 @@ BatchedInfo::BatchedInfo() {
 	facesAmount = 0;
 	materialIndex = 0;
 	priorityIndex = 0;
+	bvhIndex = 0;
 	for (char i = 0; i < 3; i++) {
 		position[i] = 0;
 		rotation[i] = 0;
 		scale[i] = 0;
-		padding[i] = 0;
+		if (i < 2) padding[i] = 0;
 	}
 }
 BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]) {
@@ -147,12 +149,14 @@ BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, u
 	facesAmount = fAmount;
 	materialIndex = mIndex;
 	priorityIndex = prioIndex;
+	bvhIndex =bIndex;
 	for (char i = 0; i < 3; i++) {
 		position[i] = pos[i];
 		rotation[i] = rot[i];
 		scale[i] = s[i];
 		if (i<2) padding[i] = 0;
 	}
+
 }
 BVHnode::BVHnode() {
 	for (char i = 0; i++; i < 3) {
@@ -162,7 +166,7 @@ BVHnode::BVHnode() {
 		amount = 0;
 	}
 }
-BVHnode::BVHnode(float inMax[], float inMin[], int inIndex, int inAmount) {
+BVHnode::BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned int inAmount) {
 	for (char i = 0; i < 3; i++) {
 		maxBound[i] = inMax[i];
 		minBound[i] = inMin[i];
@@ -170,17 +174,122 @@ BVHnode::BVHnode(float inMax[], float inMin[], int inIndex, int inAmount) {
 	index = inIndex;
 	amount = inAmount;
 }
-void ConstructBVH(Mesh* inMesh, unsigned int batchedInfoIndex, unsigned int firstFace, unsigned int facesAmount) {
+void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesAmount) {
 	float tempMaxBound[3] = { -999999999,-999999999,-999999999 };
 	float tempMinBound[3] = { 999999999,999999999,999999999 };
-	for (unsigned int i = firstFace; i < firstFace + facesAmount; i++) {
+	for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
 		for (char dimension = 0; dimension < 3; dimension++) {
-			tempMaxBound[dimension] = tempMaxBound[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBound[dimension] : inMesh->faces[i].maxPosition[dimension];
-			tempMinBound[dimension] = tempMinBound[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBound[dimension] : inMesh->faces[i].minPosition[dimension];
+			tempMaxBound[dimension] = tempMaxBound[dimension] > inMesh->faces[faceIndex].maxPosition[dimension] ? tempMaxBound[dimension] : inMesh->faces[faceIndex].maxPosition[dimension];
+			tempMinBound[dimension] = tempMinBound[dimension] < inMesh->faces[faceIndex].minPosition[dimension] ? tempMinBound[dimension] : inMesh->faces[faceIndex].minPosition[dimension];
+		}
+
+
+	}
+	for (char dimension = 0; dimension < 3; dimension++) {
+	//	tempMaxBound[dimension] += 0.01f;
+	//	tempMinBound[dimension] -= 0.01f;
+	}
+	int childrenFaces = facesAmount > triangle ? 0 : facesAmount;
+	BVHnode bvhNode(tempMaxBound, tempMinBound, firstFace, childrenFaces);
+	inMesh->bvh.push_back(bvhNode);
+}
+void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, unsigned int facesAmount) {
+	float inMaxBound[3];
+	float inMinBound[3];
+	for (char i = 0; i < 3; i++) {
+		inMaxBound[i] = inMesh->bvh[parent].maxBound[i];
+		inMinBound[i] = inMesh->bvh[parent].minBound[i];
+	}
+	//split
+	
+	float diagonalVector[3];
+	char bestDimension;
+	char division = 12;
+	float lowestCost = 999999999;
+	char bestCostIndex=-1;
+	for (char dimensionPartition = 0; dimensionPartition < 3; dimensionPartition++) {
+		for (char iterateSAH = 0; iterateSAH < division; iterateSAH++) {
+			float mid = inMinBound[dimensionPartition] + (iterateSAH + 1) * (inMaxBound[dimensionPartition] - inMinBound[dimensionPartition]) / (division + 1);
+			unsigned int midIndex = firstFace;
+			bool second = false;
+			for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
+				//sort to 2 halves
+				if (inMesh->faces[faceIndex].averagePosition[dimensionPartition] > mid) second = true;
+				else
+				{
+					if (second) {
+						std::swap(inMesh->faces[faceIndex], inMesh->faces[midIndex]);
+						second = false;
+					}
+					midIndex++;
+				}
+			}
+			//calculate cost
+			float currCost = -1;
+			float tempMaxBoundFirst[3] = { -999999999,-999999999,-999999999 };
+			float tempMinBoundFirst[3] = { 999999999,999999999,999999999 };
+			float tempMaxBoundSecond[3] = { -999999999,-999999999,-999999999 };
+			float tempMinBoundSecond[3] = { 999999999,999999999,999999999 };
+			for (unsigned int i = firstFace; i < midIndex; i++) {
+				for (char dimension = 0; dimension < 3; dimension++) {
+					tempMaxBoundFirst[dimension] = tempMaxBoundFirst[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBoundFirst[dimension] : inMesh->faces[i].maxPosition[dimension];
+					tempMinBoundFirst[dimension] = tempMinBoundFirst[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBoundFirst[dimension] : inMesh->faces[i].minPosition[dimension];
+				}
+			}
+			for (unsigned int i = midIndex; i < firstFace + facesAmount; i++) {
+				for (char dimension = 0; dimension < 3; dimension++) {
+					tempMaxBoundSecond[dimension] = tempMaxBoundSecond[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBoundSecond[dimension] : inMesh->faces[i].maxPosition[dimension];
+					tempMinBoundSecond[dimension] = tempMinBoundSecond[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBoundSecond[dimension] : inMesh->faces[i].minPosition[dimension];
+				}
+			}
+			float firstDiagonalVector[3] = { 0, 0, 0 };
+			float secondDiagonalVector[3] = { 0, 0, 0 };
+			for (char dimension = 0; dimension < 3; dimension++) {
+				firstDiagonalVector[dimension] = tempMaxBoundFirst[dimension] - tempMinBoundFirst[dimension];
+				secondDiagonalVector[dimension] = tempMaxBoundSecond[dimension] - tempMinBoundSecond[dimension];
+			}
+			currCost = (firstDiagonalVector[0] * firstDiagonalVector[1] + firstDiagonalVector[1] * firstDiagonalVector[2] + firstDiagonalVector[2] * firstDiagonalVector[0]) * (midIndex - firstFace)
+				+ (secondDiagonalVector[0] * secondDiagonalVector[1] + secondDiagonalVector[1] * secondDiagonalVector[2] + secondDiagonalVector[2] * secondDiagonalVector[0]) * (facesAmount - midIndex + firstFace);
+			if (currCost < lowestCost) {
+				lowestCost = currCost;
+				bestCostIndex = iterateSAH;
+				bestDimension = dimensionPartition;
+			}
+		}
+		
+	}
+	
+	
+	//construct actual children BVH
+	float mid = inMinBound[bestDimension] + (bestCostIndex + 1) * (inMaxBound[bestDimension] - inMinBound[bestDimension]) / (division + 1);
+	unsigned int actualMidIndex = firstFace;
+	bool second = false;
+	for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
+		//sort to 2 halves
+		if (inMesh->faces[faceIndex].averagePosition[bestDimension] > mid) second = true;
+		else
+		{
+			if (second) {
+				std::swap(inMesh->faces[faceIndex], inMesh->faces[actualMidIndex]);
+				second = false;
+			}
+			actualMidIndex++;
 		}
 	}
-	BVHnode bvhNode(tempMaxBound, tempMinBound, firstFace, facesAmount);
-	inMesh->bvh.push_back(bvhNode);
+	unsigned int nextAmount = actualMidIndex - firstFace;
+	unsigned int currIndex = inMesh->bvh.size();
+	ConstructChildBVH(inMesh, firstFace, nextAmount);
+	ConstructChildBVH(inMesh, actualMidIndex, facesAmount - nextAmount);
+	if (triangle<nextAmount) {
+		inMesh->bvh[currIndex].index = currIndex + 2;
+		ConstructBVH(inMesh, currIndex, firstFace, nextAmount);
+	}
+	if (triangle<(facesAmount - nextAmount)) {
+		unsigned int secondIndex = inMesh->bvh.size();
+		inMesh->bvh[currIndex+1].index = secondIndex;
+		ConstructBVH(inMesh, currIndex+1, actualMidIndex, facesAmount - nextAmount);
+	//	std::cout << actualMidIndex << std::endl;
+	}
 }
 void ConstructBVHFromMesh(Mesh* inMesh) {
 
@@ -203,7 +312,11 @@ void ConstructBVHFromMesh(Mesh* inMesh) {
 		}
 	}
 	for (unsigned int i = 0; i < inMesh->batchedInfos.size(); i++) {
-		ConstructBVH(inMesh, i, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
+		unsigned int currIndex = inMesh->bvh.size();
+		inMesh->batchedInfos[i].bvhIndex = currIndex;
+		ConstructChildBVH(inMesh, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
+		inMesh->bvh[currIndex].index = currIndex+1;
+		ConstructBVH(inMesh,currIndex, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
 	}
 }
 

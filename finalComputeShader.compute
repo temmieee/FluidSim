@@ -1,5 +1,81 @@
 #version 460 core
 
+mat4 rotationX(float angle) {
+    float c = cos(angle), s = sin(angle);
+    return mat4(
+        1, 0, 0, 0,
+        0, c,-s, 0,
+        0, s, c, 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 rotationY(float angle) {
+    float c = cos(angle), s = sin(angle);
+    return mat4(
+         c, 0, s, 0,
+         0, 1, 0, 0,
+        -s, 0, c, 0,
+         0, 0, 0, 1
+    );
+}
+
+mat4 rotationZ(float angle) {
+    float c = cos(angle), s = sin(angle);
+    return mat4(
+        c,-s, 0, 0,
+        s, c, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 CalculateModelMatrix(vec3 inPosition, vec3 inRotation, vec3 inScale){
+
+	mat4 P = mat4(
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    inPosition.x, inPosition.y, inPosition.z, 1
+);
+    mat4 R = rotationZ(inRotation.z) * rotationY(inRotation.y) * rotationX(inRotation.x);
+	mat4 S = mat4(
+        inScale.x, 0, 0, 0,
+        0, inScale.y, 0, 0,
+        0, 0, inScale.z, 0,
+        0, 0, 0, 1
+    );
+	mat4 modelMatrix = P * R * S;
+	return modelMatrix;
+}
+mat4 CalculateInverseModelMatrix(vec3 inPosition, vec3 inRotation, vec3 inScale) {
+    mat4 S_inv = mat4(
+        1.0/inScale.x, 0, 0, 0,
+        0, 1.0/inScale.y, 0, 0,
+        0, 0, 1.0/inScale.z, 0,
+        0, 0, 0, 1
+    );
+
+    mat4 Rx = rotationX(inRotation.x);
+    mat4 Ry = rotationY(inRotation.y);
+    mat4 Rz = rotationZ(inRotation.z);
+    mat4 R = Rz * Ry * Rx;
+
+    mat4 R_inv = transpose(R);
+
+    mat4 P_inv = mat4(
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+   -inPosition.x, -inPosition.y, -inPosition.z, 1
+);
+
+    // Final inverse model matrix
+	mat4 inverseModelMatrix=S_inv * R_inv * P_inv;
+    return inverseModelMatrix;
+}
+
+
 vec3 GetWeight(vec3 p,vec3 v0, vec3 v1, vec3 v2) {
 	float a = 1 / length(p- v0);
 	float b = 1 / length(p- v1);
@@ -15,6 +91,7 @@ vec3 Lerp3(vec3 v0, vec3 v1, vec3 v2, float a, float b, float c) {
 struct Ray {
 	vec3 origin;
 	vec3 direction;
+	vec3 inverseDir;
 };
 struct Material {
 	vec4 col;
@@ -33,9 +110,9 @@ struct UV {
 	float x, y;
 };
 struct BVHnode {
-	float maxBound[3];
-	float minBound[3];
+	vec3 maxBound;
 	int index;
+	vec3 minBound;
 	int amount;
 };
 
@@ -55,6 +132,7 @@ struct HitInfo {
 	vec3 normal;
 	int objectIndex;
 	float distance;
+	float debug;
 	Material material;
 };
 
@@ -87,6 +165,22 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 uniform uint objectAmount;
 uniform uint progress;
+
+Ray TransformRayToLocalSpace(Ray ray, mat4 inverseModelMatrix) {
+    //transform origin
+    ray.origin = (inverseModelMatrix * vec4(ray.origin, 1.0)).xyz;
+
+    //transform direction
+    ray.direction = normalize((inverseModelMatrix * vec4(ray.direction, 0.0)).xyz);
+	ray.inverseDir=1/ray.direction;
+    return ray;
+}
+HitInfo TransformHitInfoToWorldSpace(HitInfo hitInfo, mat4 modelMatrix){
+	mat3 normalMatrix=transpose(inverse(mat3(modelMatrix)));
+	hitInfo.normal=normalize(normalMatrix*hitInfo.normal);
+	hitInfo.position=(modelMatrix*vec4(hitInfo.position,1.0)).xyz;
+	return hitInfo;
+}
 uint NextRandom(inout uint state)
 {
 	state = state * 747796405 + 2891336453;
@@ -113,77 +207,138 @@ vec3 GetRandomDirection(inout uint seed)
 	vec3 vec = normalize(vec3(x, y, z));
 	return vec;
 }
+float AABBTest(Ray ray, BVHnode bvhNode){
+	float dist=-1f;
+	vec3 t1=(bvhNode.maxBound-ray.origin)*ray.inverseDir;
+	vec3 t2=(bvhNode.minBound-ray.origin)*ray.inverseDir;
+	 // Use min/max to ensure tMin is the closest intersection
+    vec3 tMin = min(t1, t2);
+	vec3 tMax = max(t1, t2);
+	 //Get the highest tMin and lowest tMax among all axes
+    float tNear = max(max(tMin.x, tMin.y), tMin.z);
+	float tFar = min(min(tMax.x, tMax.y), tMax.z);
+	// Collision occurs if tNear <= tFar and the box is in front of the ray
+	
+   if ((tNear <= tFar) && (tFar > 0)){
+	dist=tNear;
+	}
+	return dist;
+}
+HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
+{
+	HitInfo hitInfo;
+	hitInfo.distance = 999999999;
+	float kEpsilon = 0.0000001;
+	BVHnode currBVH=bvhData[inBVHindex];
+	for (int i=currBVH.index*3;i<(currBVH.index+currBVH.amount)*3;i+=3)
+	{
+		vec3 v0 = vertexData[faceData[i].x].xyz;
+		vec3 v1 = vertexData[faceData[i+1].x].xyz;
+		vec3 v2 = vertexData[faceData[i+2].x].xyz;
+		vec3 v0v1 = v1 - v0;
+		vec3 v0v2 = v2 - v0;
+		vec3 N = cross(v0v1, v0v2);
+		float NdotRayDirection = dot(N, ray.direction);
+		if (abs(NdotRayDirection) < kEpsilon) // Almost 0
+		{
+		continue;
+		}
+		float d = -dot(N, v0);
+		float t = -(dot(N, ray.origin) + d) / NdotRayDirection;
 
+		if (t < 0) continue; // The triangle is behind
+		// Compute the intersection point using equation 1
+		vec3 P = ray.origin + t * ray.direction;
+		vec3 Ne;// Vector perpendicular to triangle's plane
+		// Test sidedness of edge v0v1
+		vec3 v0p = P - v0;
+		Ne = cross(v0v1, v0p);
+		if (dot(N, Ne) < 0) continue;
+		// Test sidedness of edge v2v1
+		vec3 v2v1 = v2 - v1;
+		vec3 v1p = P - v1;
+		Ne = cross(v2v1, v1p);
+		if (dot(N, Ne) < 0) continue; // P is on the right side
+
+		// Test sidedness of P w.r.t. edge v2v0
+		vec3 v2v0 = v0 - v2;
+		vec3 v2p = P - v2;
+		Ne = cross(v2v0, v2p);
+		if (dot(N, Ne) < 0) continue; // P is on the right side
+		if (t > hitInfo.distance) continue;
+		hitInfo.distance=t;
+		//hitInfo.objectIndex = 0;
+		vec3 actualNormalv0 = normalData[faceData[i].z].xyz;
+		vec3 actualNormalv1 = normalData[faceData[i + 1].z].xyz;
+		vec3 actualNormalv2 = normalData[faceData[i + 2].z].xyz;
+		vec3 weight = GetWeight(P, v0, v1, v2);
+		vec3 actualNormal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
+		hitInfo.position=P;
+		hitInfo.normal=actualNormal;
+		//hitInfo.objectIndex = faceData[i].w;
+	}
+	return hitInfo;
+}
 HitInfo GetHitInfoFromRay(Ray ray)
 {
 	HitInfo hitInfo;
 	//hitInfo.normal = vec3(0, 0, 0);
-	//hitInfo.position = vec3(0, 0, 0);
+	hitInfo.position = vec3(0, 0, 0);
 	hitInfo.objectIndex = -1;
 	hitInfo.distance = 999999999;
-	float kEpsilon = 0.0000001;
-
+	int boxCheck=0;
 	for (uint objIndex=0; objIndex <objectAmount; objIndex++)
 	{
-		
+		mat4 inverseModelMatrix=CalculateInverseModelMatrix(objectData[objIndex].position,objectData[objIndex].rotation,objectData[objIndex].scale);
+		mat4 modelMatrix=CalculateModelMatrix(objectData[objIndex].position,objectData[objIndex].rotation,objectData[objIndex].scale);
+		Ray localRay;
+		localRay=TransformRayToLocalSpace(ray,inverseModelMatrix);
+		//localRay=ray;
+		uint bvhArray[64];
+		uint currBVHArrayIndex=0;
 		HitInfo tempHitInfo;
 		//tempHitInfo=hitInfo;
-		//tempHitInfo.normal = vec3(0, 0, 0);
-		//tempHitInfo.position = vec3(0, 0, 0);
+		tempHitInfo.normal = vec3(0.5, 0.5, 0.5);
+		tempHitInfo.position = vec3(0, 0, 0);
 		tempHitInfo.distance=999999999;
 		tempHitInfo.objectIndex = -1;
-		for (uint i = objectData[objIndex].startFace*3; i< (objectData[objIndex].startFace+objectData[objIndex].facesAmount) * 3;i+=3)
-		{
-							
-			vec3 v0 = vertexData[faceData[i].x].xyz+objectData[objIndex].position.xyz;
-			vec3 v1 = vertexData[faceData[i+1].x].xyz+objectData[objIndex].position.xyz;
-			vec3 v2 = vertexData[faceData[i+2].x].xyz+objectData[objIndex].position.xyz;
-			vec3 v0v1 = v1 - v0;
-			vec3 v0v2 = v2 - v0;
-			vec3 N = cross(v0v1, v0v2);
-			float NdotRayDirection = dot(N, ray.direction);
-			if (abs(NdotRayDirection) < kEpsilon) // Almost 0
+		bvhArray[currBVHArrayIndex]=objectData[objIndex].bvhIndex;
+		currBVHArrayIndex++;
+		while (currBVHArrayIndex>0)
+		{		
+			currBVHArrayIndex--;
+			BVHnode currNode=bvhData[bvhArray[currBVHArrayIndex]];
+			HitInfo currHitInfo;
+			currHitInfo.normal = vec3(0, 0, 0);
+			currHitInfo.position = vec3(0, 0, 0);
+			currHitInfo.distance=999999999;
+			currHitInfo.objectIndex = -1;
+			if (AABBTest(localRay,currNode)>0)
 			{
-				continue;
+				if (currNode.amount!=0)
+				{		
+					
+					currHitInfo=GetHitInfoFromBVH(localRay,bvhArray[currBVHArrayIndex]);
+				}
+				else
+				{
+				bvhArray[currBVHArrayIndex]=currNode.index;
+				bvhArray[currBVHArrayIndex+1]=currNode.index+1;
+				currBVHArrayIndex+=2;
+				}
 			}
-			float d = -dot(N, v0);
-			float t = -(dot(N, ray.origin) + d) / NdotRayDirection;
-		
-			if (t < 0) continue; // The triangle is behind
-			// Compute the intersection point using equation 1
-			vec3 P = ray.origin + t * ray.direction;
-			vec3 Ne;// Vector perpendicular to triangle's plane
-			 // Test sidedness of edge v0v1
-			vec3 v0p = P - v0;
-			Ne = cross(v0v1, v0p);
-			if (dot(N, Ne) < 0) continue;
-			// Test sidedness of edge v2v1
-			vec3 v2v1 = v2 - v1;
-			vec3 v1p = P - v1;
-			Ne = cross(v2v1, v1p);
-			if (dot(N, Ne) < 0) continue; // P is on the right side
+			if (currHitInfo.distance>tempHitInfo.distance) continue;
+			tempHitInfo=currHitInfo;
 
-			// Test sidedness of P w.r.t. edge v2v0
-			vec3 v2v0 = v0 - v2;
-			vec3 v2p = P - v2;
-			Ne = cross(v2v0, v2p);
-			if (dot(N, Ne) < 0) continue; // P is on the right side
-			if (t > tempHitInfo.distance) continue;
-			tempHitInfo.distance = t;
-			vec3 actualNormalv0 = normalData[faceData[i].z].xyz;
-			vec3 actualNormalv1 = normalData[faceData[i + 1].z].xyz;
-			vec3 actualNormalv2 = normalData[faceData[i + 2].z].xyz;
-			vec3 weight = GetWeight(P, v0, v1, v2);
-			vec3 actualNormal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
-			tempHitInfo.position=P;
-			tempHitInfo.normal=actualNormal;
-			tempHitInfo.objectIndex = objectData[objIndex].materialIndex;
-			//tempHitInfo.objectIndex = int(objIndex);
-
+			
 		}
+	//tempHitInfo=TransformHitInfoToWorldSpace(tempHitInfo,modelMatrix);
+	//tempHitInfo.distance=length(tempHitInfo.position-ray.origin);
+	if (tempHitInfo.distance>hitInfo.distance) continue;
+	hitInfo=tempHitInfo;
+	hitInfo=TransformHitInfoToWorldSpace(hitInfo,modelMatrix);
+	hitInfo.objectIndex=objectData[objIndex].materialIndex;
 		
-		if (tempHitInfo.distance>hitInfo.distance) continue;
-		hitInfo=tempHitInfo;
 	}
 	return hitInfo;
 }
@@ -199,8 +354,8 @@ void main()
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 0, -3.5f);
-	vec3 rayOrigin = cameraPos + vec3(x, y, atan(halffov * 3.14 / 180));
+	vec3 cameraPos = vec3(0, 0, -5);
+	vec3 rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
 	vec3 debug;
@@ -216,11 +371,12 @@ void main()
 		vec3 randomDir= GetRandomDirection(rng);
 		rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.0001);
-		for (int j = 0; j <1; j++)
+		for (int j = 0; j <10; j++)
 		{
 			Ray ray;
 			ray.origin = rayOrigin;
 			ray.direction = rayDir;
+			ray.inverseDir=1/rayDir;
 			HitInfo hitInfo = GetHitInfoFromRay(ray);
 			if (hitInfo.objectIndex == -1)
 			{
@@ -235,7 +391,9 @@ void main()
 			//rayDir=normalize(reflect(rayDir,hitInfo.normal)+randomDir*materialData[hitInfo.objectIndex].roughness);
 			rayOrigin = hitInfo.position + rayDir*0.00001;
 			tempLight += materialData[hitInfo.objectIndex].emissive * tempCol;
-			debug=hitInfo.normal;
+			//debug=hitInfo.distance.xxx/20;
+			debug=hitInfo.position;
+			//debug=materialData[hitInfo.objectIndex].emissive.xxx;
 			tempCol *= materialData[hitInfo.objectIndex].col.xyz;
 			float p = max(tempCol.x, max(tempCol.y, tempCol.z));
 			if (RandomValue(rng) >= p) {
@@ -244,7 +402,7 @@ void main()
 			tempCol *= 1.0 / p; 
 		}
 		light += tempLight / repetition;
-		light = debug;
+		//light = debug;
 	}
 	pixel = vec4(light,1.0);
 	vec4 previousCol=colorData[pixelCoords.x + pixelCoords.y * dimensions.x];

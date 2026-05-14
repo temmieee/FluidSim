@@ -9,7 +9,7 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
-
+#include "math.h"
 const unsigned int SCREEN_WIDTH = 1280;
 const unsigned int SCREEN_HEIGHT = 840;
 
@@ -528,31 +528,26 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	PrintSpecs();
 	
 	unsigned int prog = 0;
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, colorBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
+	//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, bvhBuffer);
 	while (!glfwWindowShouldClose(window))
 	{
 		
-		if (prog<10) {
-			auto start = std::chrono::high_resolution_clock::now();
+		if (prog<100) {
 			computeShader.Activate();
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, colorBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalBuffer);
-			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, uvBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, faceBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, bvhBuffer);
 			glUniform1f(halffov, 40);
 			glUniform1ui(objectAmount, m.batchedInfos.size());
 			glUniform1ui(progress, prog);
 			glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
-			
+			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 			prog++;
 			std::cout << prog << "\n";
-			auto stop = std::chrono::high_resolution_clock::now();
-			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-			std::cout << "Render time: " << duration.count() << " microseconds" << std::endl;
 		}
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
@@ -606,6 +601,7 @@ void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], u
 				newBatchedInfo.scale[1] = 0.5;
 				newBatchedInfo.scale[2] = 0.5;
 				newBatchedInfo.materialIndex= floor(9*static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+				newBatchedInfo.bvhIndex = (*batchedInfos)[meshIndex].bvhIndex;
 				batchedInfos->push_back(newBatchedInfo);
 			}
 		}
@@ -627,6 +623,7 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 				}
 			}
 			newBatchedInfo.materialIndex = floor(9 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+			newBatchedInfo.bvhIndex = (*batchedInfos)[meshIndex].bvhIndex;
 			batchedInfos->push_back(newBatchedInfo);
 		}
 
@@ -652,28 +649,28 @@ int main()
 	unsigned int dimensions[3] = {2,1,2 };
 
 	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
-	//InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
-	//batchedMesh.batchedInfos[0].position[1] = 0;
-	//batchedMesh.batchedInfos[0].position[2] = -0.0f;
-	//batchedMesh.batchedInfos[0].scale[0] = 1.f;
-	//batchedMesh.batchedInfos[0].scale[1] = 0.1f;
-	//batchedMesh.batchedInfos[0].scale[2] = 1.f;
-	//batchedMesh.batchedInfos[0].materialIndex = 10;
-	batchedMesh.batchedInfos[0].position[1] = -1.1f;
-	batchedMesh.batchedInfos[0].scale[0] = 1;
-	batchedMesh.batchedInfos[0].scale[1] = 1;
-	batchedMesh.batchedInfos[0].scale[2] = 1;
-	batchedMesh.batchedInfos[0].materialIndex = 11;
-	/*batchedMesh.batchedInfos[2].materialIndex = 12;
+	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
+	batchedMesh.batchedInfos[0].position[1] = 3.f;
+	batchedMesh.batchedInfos[0].position[2] = 0;
+	batchedMesh.batchedInfos[0].scale[0] = 1.f;
+	batchedMesh.batchedInfos[0].scale[1] = 0.2f;
+	batchedMesh.batchedInfos[0].scale[2] = 1.f;
+	batchedMesh.batchedInfos[0].materialIndex = 10;
+	batchedMesh.batchedInfos[1].position[0] = 0;
+	batchedMesh.batchedInfos[1].scale[0] = 1.f;
+	batchedMesh.batchedInfos[1].scale[1] = 1.f;
+	batchedMesh.batchedInfos[1].scale[2] = 1.f;
+	batchedMesh.batchedInfos[1].materialIndex = 1;
+	batchedMesh.batchedInfos[2].materialIndex = 12;
 	batchedMesh.batchedInfos[3].materialIndex = 12;
 	batchedMesh.batchedInfos[6].materialIndex = 12;
-	batchedMesh.batchedInfos[7].materialIndex = 12;*/
+	batchedMesh.batchedInfos[7].materialIndex = 12;
 	std::vector<Material> materialArray = CreateMaterialArray(13);
 	materialArray[10].emissive = 4;
 	materialArray[11].color = Vector4(1.f, 1, 1, 1.f);
 	materialArray[11].roughness =1;
 	materialArray[12].color = Vector4(1.f, 1, 1, 1.f);
-	materialArray[12].roughness = 0;
+	materialArray[12].roughness = 1;
 	//PrintMesh(mesh[0]);
 	DrawBatchedMesh(batchedMesh,materialArray);
 	return 0;
