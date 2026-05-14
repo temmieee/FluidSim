@@ -64,6 +64,9 @@
     <ClInclude Include="meshParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="math.cpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="math.h">
       <Filter>Header Files</Filter>
     </ClInclude>

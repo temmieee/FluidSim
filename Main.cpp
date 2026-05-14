@@ -9,7 +9,6 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
-#include "math.h"
 const unsigned int SCREEN_WIDTH = 1280;
 const unsigned int SCREEN_HEIGHT = 840;
 
@@ -619,7 +618,7 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 					newBatchedInfo.scale[k] = bounds[k];
 				}
 				else {
-					newBatchedInfo.scale[k] = 0.1;
+					newBatchedInfo.scale[k] = -.1;
 				}
 			}
 			newBatchedInfo.materialIndex = floor(9 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
@@ -645,28 +644,36 @@ int main()
 	float bounds[3] = { 2.f,1.f,2.f };
 	float center[3] = { 0,-1,0 };
 	float centerWall[3] = { 0,0,0 };
-	float walls[3] = { 5.f,5.f,5.f };
+	float walls[3] = { 10.f,10.f,10.f };
 	unsigned int dimensions[3] = {2,1,2 };
 
 	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
 	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
 	batchedMesh.batchedInfos[0].position[1] = 3.f;
-	batchedMesh.batchedInfos[0].position[2] = 0;
+	batchedMesh.batchedInfos[0].position[2] = 0.f;
 	batchedMesh.batchedInfos[0].scale[0] = 1.f;
-	batchedMesh.batchedInfos[0].scale[1] = 0.2f;
+	batchedMesh.batchedInfos[0].scale[1] = 1.f;
 	batchedMesh.batchedInfos[0].scale[2] = 1.f;
 	batchedMesh.batchedInfos[0].materialIndex = 10;
-	batchedMesh.batchedInfos[1].position[0] = 0;
+	batchedMesh.batchedInfos[1].position[1] = -1.f;
+	batchedMesh.batchedInfos[1].position[2] = 1.f;
 	batchedMesh.batchedInfos[1].scale[0] = 1.f;
 	batchedMesh.batchedInfos[1].scale[1] = 1.f;
 	batchedMesh.batchedInfos[1].scale[2] = 1.f;
 	batchedMesh.batchedInfos[1].materialIndex = 1;
+	//batchedMesh.batchedInfos[7].scale[0] = 2;
+	//batchedMesh.batchedInfos[7].scale[1] = 2;
+	//batchedMesh.batchedInfos[7].scale[2] = 2;
+	//batchedMesh.batchedInfos[7].position[0] = -0;
+	//batchedMesh.batchedInfos[7].position[2] = -10;
 	batchedMesh.batchedInfos[2].materialIndex = 12;
 	batchedMesh.batchedInfos[3].materialIndex = 12;
+	batchedMesh.batchedInfos[4].materialIndex = 12;
+	batchedMesh.batchedInfos[5].materialIndex = 12;
 	batchedMesh.batchedInfos[6].materialIndex = 12;
 	batchedMesh.batchedInfos[7].materialIndex = 12;
 	std::vector<Material> materialArray = CreateMaterialArray(13);
-	materialArray[10].emissive = 4;
+	materialArray[10].emissive = 2;
 	materialArray[11].color = Vector4(1.f, 1, 1, 1.f);
 	materialArray[11].roughness =1;
 	materialArray[12].color = Vector4(1.f, 1, 1, 1.f);

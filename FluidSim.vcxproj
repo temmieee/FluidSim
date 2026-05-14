@@ -151,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EBO.h" />
+    <ClInclude Include="math.cpp" />
     <ClInclude Include="math.h" />
     <ClInclude Include="meshParser.h" />
     <ClInclude Include="shaderClass.h" />

@@ -251,9 +251,9 @@ void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, uns
 			currCost = (firstDiagonalVector[0] * firstDiagonalVector[1] + firstDiagonalVector[1] * firstDiagonalVector[2] + firstDiagonalVector[2] * firstDiagonalVector[0]) * (midIndex - firstFace)
 				+ (secondDiagonalVector[0] * secondDiagonalVector[1] + secondDiagonalVector[1] * secondDiagonalVector[2] + secondDiagonalVector[2] * secondDiagonalVector[0]) * (facesAmount - midIndex + firstFace);
 			if (currCost < lowestCost) {
-				lowestCost = currCost;
 				bestCostIndex = iterateSAH;
 				bestDimension = dimensionPartition;
+				lowestCost = currCost;
 			}
 		}
 		

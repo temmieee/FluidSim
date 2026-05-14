@@ -1,6 +1,7 @@
 #ifndef MESH_PARSER_H
 #define MESH_PARSER_H
 
+#include "math.h"
 #include"glad/glad.h"
 #include"GLFW/glfw3.h"
 #include <string>
@@ -60,6 +61,14 @@ struct Face {
 	Face(std::string line);
 
 };
+struct BVHnode {
+	float maxBound[3];
+	int index;
+	float minBound[3];
+	int amount;
+	BVHnode();
+	BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned int inAmount);
+};
 struct BatchedInfo {
 	float position[3];
 	unsigned int startFace;
@@ -70,16 +79,10 @@ struct BatchedInfo {
 	float padding[2];
 	unsigned int bvhIndex;
 	unsigned int priorityIndex;
+	Mat4 modelMatrix;
+	Mat4 inverseModelMatrix;
 	BatchedInfo();
 	BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]);
-};
-struct BVHnode {
-	float maxBound[3];
-	int index;
-	float minBound[3];
-	int amount;
-	BVHnode();
-	BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned int inAmount);
 };
 struct Mesh {
 public:
