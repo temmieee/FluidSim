@@ -39,6 +39,9 @@
     <ClCompile Include="meshParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="math.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="default.vert">
@@ -64,10 +67,7 @@
     <ClInclude Include="meshParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="math.cpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="math.h">
+    <ClInclude Include="frameTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

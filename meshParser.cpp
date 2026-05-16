@@ -1,5 +1,6 @@
 #include "meshParser.h"
-const int triangle = 5;
+const int triangle = 2;
+int total[3] = { 0,0,0 };
 Vector3::Vector3() {
 	x = 0;
 	y = 0;
@@ -175,8 +176,8 @@ BVHnode::BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned in
 	amount = inAmount;
 }
 void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesAmount) {
-	float tempMaxBound[3] = { -999999999,-999999999,-999999999 };
-	float tempMinBound[3] = { 999999999,999999999,999999999 };
+	float tempMaxBound[3] = { -INFINITY,-INFINITY,-INFINITY };
+	float tempMinBound[3] = { INFINITY,INFINITY,INFINITY };
 	for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
 		for (char dimension = 0; dimension < 3; dimension++) {
 			tempMaxBound[dimension] = tempMaxBound[dimension] > inMesh->faces[faceIndex].maxPosition[dimension] ? tempMaxBound[dimension] : inMesh->faces[faceIndex].maxPosition[dimension];
@@ -185,10 +186,7 @@ void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesA
 
 
 	}
-	for (char dimension = 0; dimension < 3; dimension++) {
-	//	tempMaxBound[dimension] += 0.01f;
-	//	tempMinBound[dimension] -= 0.01f;
-	}
+
 	int childrenFaces = facesAmount > triangle ? 0 : facesAmount;
 	BVHnode bvhNode(tempMaxBound, tempMinBound, firstFace, childrenFaces);
 	inMesh->bvh.push_back(bvhNode);
@@ -204,32 +202,28 @@ void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, uns
 	
 	float diagonalVector[3];
 	char bestDimension;
-	char division = 12;
-	float lowestCost = 999999999;
+	char division = 20;
+	float lowestCost = INFINITY;
 	char bestCostIndex=-1;
 	for (char dimensionPartition = 0; dimensionPartition < 3; dimensionPartition++) {
 		for (char iterateSAH = 0; iterateSAH < division; iterateSAH++) {
 			float mid = inMinBound[dimensionPartition] + (iterateSAH + 1) * (inMaxBound[dimensionPartition] - inMinBound[dimensionPartition]) / (division + 1);
 			unsigned int midIndex = firstFace;
 			bool second = false;
+			//sort to 2 halves
 			for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
-				//sort to 2 halves
-				if (inMesh->faces[faceIndex].averagePosition[dimensionPartition] > mid) second = true;
-				else
+				if (inMesh->faces[faceIndex].averagePosition[dimensionPartition] < mid)
 				{
-					if (second) {
-						std::swap(inMesh->faces[faceIndex], inMesh->faces[midIndex]);
-						second = false;
-					}
+					std::swap(inMesh->faces[faceIndex], inMesh->faces[midIndex]);
 					midIndex++;
 				}
 			}
 			//calculate cost
-			float currCost = -1;
-			float tempMaxBoundFirst[3] = { -999999999,-999999999,-999999999 };
-			float tempMinBoundFirst[3] = { 999999999,999999999,999999999 };
-			float tempMaxBoundSecond[3] = { -999999999,-999999999,-999999999 };
-			float tempMinBoundSecond[3] = { 999999999,999999999,999999999 };
+			float currCost;
+			float tempMaxBoundFirst[3] = { -INFINITY ,-INFINITY ,-INFINITY };
+			float tempMinBoundFirst[3] = { INFINITY ,INFINITY ,INFINITY };
+			float tempMaxBoundSecond[3] = { -INFINITY ,-INFINITY ,-INFINITY };
+			float tempMinBoundSecond[3] = { INFINITY ,INFINITY ,INFINITY };
 			for (unsigned int i = firstFace; i < midIndex; i++) {
 				for (char dimension = 0; dimension < 3; dimension++) {
 					tempMaxBoundFirst[dimension] = tempMaxBoundFirst[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBoundFirst[dimension] : inMesh->faces[i].maxPosition[dimension];
@@ -242,8 +236,8 @@ void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, uns
 					tempMinBoundSecond[dimension] = tempMinBoundSecond[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBoundSecond[dimension] : inMesh->faces[i].minPosition[dimension];
 				}
 			}
-			float firstDiagonalVector[3] = { 0, 0, 0 };
-			float secondDiagonalVector[3] = { 0, 0, 0 };
+			float firstDiagonalVector[3];
+			float secondDiagonalVector[3];
 			for (char dimension = 0; dimension < 3; dimension++) {
 				firstDiagonalVector[dimension] = tempMaxBoundFirst[dimension] - tempMinBoundFirst[dimension];
 				secondDiagonalVector[dimension] = tempMaxBoundSecond[dimension] - tempMinBoundSecond[dimension];
@@ -256,23 +250,17 @@ void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, uns
 				lowestCost = currCost;
 			}
 		}
-		
+
 	}
-	
-	
+	total[bestDimension]++;
 	//construct actual children BVH
 	float mid = inMinBound[bestDimension] + (bestCostIndex + 1) * (inMaxBound[bestDimension] - inMinBound[bestDimension]) / (division + 1);
-	unsigned int actualMidIndex = firstFace;
-	bool second = false;
+ 	unsigned int actualMidIndex = firstFace;
+	//sort to 2 halves
 	for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
-		//sort to 2 halves
-		if (inMesh->faces[faceIndex].averagePosition[bestDimension] > mid) second = true;
-		else
+		if (inMesh->faces[faceIndex].averagePosition[bestDimension] < mid)
 		{
-			if (second) {
-				std::swap(inMesh->faces[faceIndex], inMesh->faces[actualMidIndex]);
-				second = false;
-			}
+			std::swap(inMesh->faces[faceIndex], inMesh->faces[actualMidIndex]);
 			actualMidIndex++;
 		}
 	}
@@ -295,8 +283,8 @@ void ConstructBVHFromMesh(Mesh* inMesh) {
 
 	for (unsigned int i = 0; i < inMesh->faces.size(); i++) {
 		float tempAveragePos[3] = { 0,0,0 };
-		float tempMaxPos[3] = { -999999999,-999999999,-999999999 };
-		float tempMinPos[3] = { 999999999,999999999,999999999 };
+		float tempMaxPos[3] = { -INFINITY ,-INFINITY ,-INFINITY };
+		float tempMinPos[3] = { INFINITY ,INFINITY ,INFINITY };
 		for (char iVertex = 0; iVertex < 3; iVertex++) {
 			for (char dimension = 0; dimension < 3; dimension++) {
 				float curPosition = inMesh->vertices[inMesh->faces[i].indicesGroups[iVertex].indices[0]].position[dimension];
@@ -318,16 +306,14 @@ void ConstructBVHFromMesh(Mesh* inMesh) {
 		inMesh->bvh[currIndex].index = currIndex+1;
 		ConstructBVH(inMesh,currIndex, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
 	}
+	std::cout << total[0] << " " << total[1] << " " << total[2] << std::endl;
 }
 
 Mesh BatchMesh(std::vector<Mesh> meshes) {
 	Mesh batchedMesh;
 	unsigned int curFaceIndex=0;
 	for (unsigned int meshIndex = 0; meshIndex < meshes.size(); meshIndex++) {
-		float temp[3];
-		temp[0] = 0;
-		temp[1] = 0;
-		temp[2] = 0;
+		float temp[3] = { 0,0,0 };
 		BatchedInfo batchedInfo(0,0,0,0,0,temp,temp,temp);
 		batchedInfo.startFace = curFaceIndex;
 		unsigned int currentVerticesSize = batchedMesh.vertices.size();

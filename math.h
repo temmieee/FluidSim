@@ -6,6 +6,7 @@
 
 
 using Mat4 = std::array<std::array<float, 4>, 4>;
-Mat4 Multiply(const Mat4& a, const Mat4& b);
-Mat4 GenerateWorldMatrix(const float position[], const float rotation[], const float scale[]);
+Mat4 Multiply(Mat4 a,Mat4 b);
+Mat4 CalculateModelMatrix(const float position[3], const float rotationDeg[3], const float scale[3]);
+Mat4 CalculateInverseModelMatrix(const float position[3], const float rotationDeg[3], const float scale[3]);
 #endif

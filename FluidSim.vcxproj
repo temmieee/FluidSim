@@ -71,12 +71,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>${workspaceRoot}/../../include;$(IncludePath)</IncludePath>
-    <LibraryPath>${workspaceRoot}/../../lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)Libraries\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)Libraries/lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>${workspaceRoot}/../../include;$(IncludePath)</IncludePath>
-    <LibraryPath>${workspaceRoot}/../../lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)Libraries\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)Libraries/lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -140,6 +140,7 @@
     <ClCompile Include="EBO.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="math.cpp" />
     <ClCompile Include="meshParser.cpp" />
     <ClCompile Include="shaderClass.cpp" />
     <ClCompile Include="VAO.cpp" />
@@ -151,8 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EBO.h" />
-    <ClInclude Include="math.cpp" />
-    <ClInclude Include="math.h" />
+    <ClInclude Include="frameTimer.h" />
     <ClInclude Include="meshParser.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="VAO.h" />

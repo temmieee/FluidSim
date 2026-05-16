@@ -167,10 +167,7 @@ uniform uint objectAmount;
 uniform uint progress;
 
 Ray TransformRayToLocalSpace(Ray ray, mat4 inverseModelMatrix) {
-    //transform origin
     ray.origin = (inverseModelMatrix * vec4(ray.origin, 1.0)).xyz;
-
-    //transform direction
     ray.direction = (inverseModelMatrix * vec4(ray.direction, 0.0)).xyz;
 	ray.inverseDir=1/ray.direction;
 	ray.direction=normalize(ray.direction);
@@ -182,7 +179,7 @@ HitInfo TransformHitInfoToWorldSpace(HitInfo hitInfo, mat4 modelMatrix){
 	hitInfo.position=(modelMatrix*vec4(hitInfo.position,1.0)).xyz;
 	return hitInfo;
 }
-// Halton (base b) low-discrepancy sequence — returns in [0,1)
+// Halton noise sampler
 float Halton(uint index, uint base) {
     float f = 1.0;
     float r = 0.0;
@@ -195,7 +192,7 @@ float Halton(uint index, uint base) {
     return r;
 }
 
-// Cosine-weighted hemisphere sampling (z-up local)
+// Cosine-weighted hemisphere sampling
 vec3 CosineSampleHemisphere(float u1, float u2) {
     float r = sqrt(max(0.0, u1));
     float theta = 2.0 * 3.14159265359 * u2;
@@ -249,9 +246,8 @@ float AABBTest(Ray ray, BVHnode bvhNode){
     float tNear = max(max(tMin.x, tMin.y), tMin.z);
 	float tFar = min(min(tMax.x, tMax.y), tMax.z);
 	// Collision occurs if tNear <= tFar and the box is in front of the ray
-	
    if ((tNear <= tFar) && (tFar > 0)){
-	dist = tNear;
+	dist = tNear>0? tNear:tFar;
 	}
 	return dist;
 }
@@ -314,37 +310,35 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 HitInfo GetHitInfoFromRay(Ray ray)
 {
 	HitInfo hitInfo;
-	//hitInfo.normal = vec3(0, 0, 0);
-	//hitInfo.position = vec3(-1, -1, -1);
 	hitInfo.objectIndex = -1;
 	hitInfo.distance = 999999999;
 	float boxCheck=0;
+	float lim=70;
 	for (uint objIndex=0; objIndex <objectAmount; objIndex++)
 	{
-		mat4 inverseModelMatrix=CalculateInverseModelMatrix(objectData[objIndex].position,objectData[objIndex].rotation,objectData[objIndex].scale);
-		mat4 modelMatrix=CalculateModelMatrix(objectData[objIndex].position,objectData[objIndex].rotation,objectData[objIndex].scale);
+		mat4 inverseModelMatrix=objectData[objIndex].inverseModelMatrix;
+		mat4 modelMatrix=objectData[objIndex].modelMatrix;
 		Ray localRay;
 		localRay=TransformRayToLocalSpace(ray,inverseModelMatrix);
-		//localRay=ray;
 		uint bvhArray[64];
 		uint currBVHArrayIndex=0;
 		HitInfo tempHitInfo;
-		//tempHitInfo=hitInfo;
-		//tempHitInfo.normal = vec3(0.5, 0.5, 0.5);
-		//tempHitInfo.position = vec3(0, 0, 0);
 		tempHitInfo.distance=999999999;
 		tempHitInfo.objectIndex = -1;
 		bvhArray[currBVHArrayIndex]=objectData[objIndex].bvhIndex;
 		currBVHArrayIndex++;
 		while (currBVHArrayIndex>0)
 		{		
-			boxCheck++;
+			if (boxCheck<lim) boxCheck++;
 			currBVHArrayIndex--;
 			BVHnode currNode=bvhData[bvhArray[currBVHArrayIndex]];
 			HitInfo currHitInfo;
 			currHitInfo.distance=999999999;
 			currHitInfo.objectIndex = -1;
-			if (AABBTest(localRay,currNode)<0) continue;
+			float currBVHdist=AABBTest(localRay,currNode);
+			if (currBVHdist<0) continue;
+			if (currBVHdist>tempHitInfo.distance) continue;
+			if (currBVHdist>hitInfo.distance) continue;
 			if (currNode.amount!=0)
 			{		
 					
@@ -352,9 +346,38 @@ HitInfo GetHitInfoFromRay(Ray ray)
 			}
 			else
 			{
-			bvhArray[currBVHArrayIndex]=currNode.index;
-			bvhArray[currBVHArrayIndex+1]=currNode.index+1;
-			currBVHArrayIndex+=2;
+				float firstNodeDist=AABBTest(localRay,bvhData[currNode.index]);
+				float secondNodeDist=AABBTest(localRay,bvhData[currNode.index+1]);
+				if (firstNodeDist<0&&secondNodeDist<0) continue;
+				if (firstNodeDist>secondNodeDist)
+				{
+					if (secondNodeDist>0){
+					//if(secondNodeDist>tempHitInfo.distance) continue;
+					if(secondNodeDist>hitInfo.distance) continue;
+					bvhArray[currBVHArrayIndex]=currNode.index;
+					bvhArray[currBVHArrayIndex+1]=currNode.index+1;
+					currBVHArrayIndex+=2;
+					}
+					else {
+						bvhArray[currBVHArrayIndex]=currNode.index;
+						currBVHArrayIndex++;
+					}
+				}
+				else
+				{
+					if (firstNodeDist>0){
+					//if(firstNodeDist>tempHitInfo.distance) continue;
+					if(firstNodeDist>hitInfo.distance) continue;
+					bvhArray[currBVHArrayIndex]=currNode.index+1;
+					bvhArray[currBVHArrayIndex+1]=currNode.index;
+					currBVHArrayIndex+=2;
+					}
+					 else {
+					 bvhArray[currBVHArrayIndex]=currNode.index+1;
+					 currBVHArrayIndex++;
+					 }
+					
+				}
 			}
 			
 			if (currHitInfo.distance>tempHitInfo.distance) continue;
@@ -369,10 +392,10 @@ HitInfo GetHitInfoFromRay(Ray ray)
 	if (tempHitInfo.distance>hitInfo.distance) continue;
 	hitInfo=tempHitInfo;
 	hitInfo.objectIndex=int(objIndex);
-	}	
-	mat4 modelMatrix=CalculateModelMatrix(objectData[hitInfo.objectIndex].position,objectData[hitInfo.objectIndex].rotation,objectData[hitInfo.objectIndex].scale);
-	hitInfo=TransformHitInfoToWorldSpace(hitInfo,modelMatrix);
-	hitInfo.debug=boxCheck>1000?1:0;
+	}
+	hitInfo=TransformHitInfoToWorldSpace(hitInfo,objectData[hitInfo.objectIndex].modelMatrix);
+	//hitInfo.debug=float(boxCheck==lim);
+	hitInfo.debug=log(boxCheck)/5;
 	return hitInfo;
 }
 
@@ -387,16 +410,16 @@ void main()
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 0, -4);
+	vec3 cameraPos = vec3(0, 0, -5);
 	vec3 rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
 	vec3 debug;
 	vec3 col = vec3(1, 1, 1);
 	vec3 light = vec3(0, 0, 0);
-	uint repetition = 1;
+	uint rayPerPixel = 1;
 	float distance;
-	for (int i = 0; i < repetition; i++) 
+	for (int i = 0; i < rayPerPixel; i++) 
 	{
 		vec3 tempCol = vec3(1, 1, 1);
 		vec3 tempLight = vec3(0, 0, 0);
@@ -410,7 +433,7 @@ void main()
 			Ray ray;
 			ray.origin = rayOrigin;
 			ray.direction = rayDir;
-			ray.inverseDir=normalize(1/rayDir);
+			ray.inverseDir=1/rayDir;
 			HitInfo hitInfo = GetHitInfoFromRay(ray);
 			if (hitInfo.objectIndex == -1)
 			{
@@ -418,10 +441,10 @@ void main()
 				//hitInfo.normal = vec3(0, 0, 0);
 				break;
 			}
+			Material hitMaterial=materialData[objectData[hitInfo.objectIndex].materialIndex];
+			float roughness = hitMaterial.roughness;
 			rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * (i+j+progress);
-			randomDir= GetRandomDirection(rng);
-			// compute a low-discrepancy sample index unique per pixel/sample/bounce
-
+			randomDir= normalize(GetRandomDirection(rng));
 			uint sampleIndex = basePixelIndex + uint(i) * 65536u + uint(j) * 257u + uint(progress) * 13u;
 			float u1 = Halton(sampleIndex, 2u);
 			float u2 = Halton(sampleIndex, 3u);
@@ -431,23 +454,22 @@ void main()
 			vec3 diffuseDir=(rngRandomDir+haltonRandomDir)*2;
 			vec3 refl = normalize(reflect(rayDir, hitInfo.normal));
 			vec3 specularDir = ToWorld(CosineSampleHemisphere(u1, u2), refl);
-			float rough = materialData[objectData[hitInfo.objectIndex].materialIndex].roughness;
-			rayDir = normalize(mix(refl, mix(specularDir, diffuseDir, 0.5), rough));
-			//rayDir=normalize(reflect(rayDir,hitInfo.normal)+randomDir*materialData[hitInfo.objectIndex].roughness);
+			rayDir = normalize(mix(refl, mix(specularDir, rngRandomDir, 0.5), roughness));
 			rayOrigin = hitInfo.position + rayDir*0.00001;
-			Material hitMaterial=materialData[objectData[hitInfo.objectIndex].materialIndex];
 			tempLight += hitMaterial.emissive * tempCol;
 			//debug=log(hitInfo.distance).xxx/5;
-			debug=hitInfo.position;
+			debug=hitInfo.debug.xxx;
+			//debug=hitInfo.normal;
 			//debug=materialData[hitInfo.objectIndex].emissive.xxx;
 			tempCol *= hitMaterial.col.xyz;
 			float p = max(tempCol.x, max(tempCol.y, tempCol.z));
+			if (p<0.1) break;
 			if (RandomValue(rng) >= p) {
 				break;
 			}
 			tempCol *= 1.0 / p; 
 		}
-		light += tempLight / repetition;
+		light += tempLight / rayPerPixel;
 		//light = debug;
 	}
 	pixel = vec4(light,1.0);

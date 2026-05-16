@@ -1,6 +1,7 @@
 #include<iostream>
 
 #include"glad/glad.h"
+#include"frameTimer.h"
 #include"GLFW/glfw3.h"
 #include"shaderClass.h"
 #include"meshParser.h"
@@ -399,6 +400,10 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	}
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
+	for (char i=0;i<m.batchedInfos.size();i++) {
+		m.batchedInfos[i].modelMatrix = CalculateModelMatrix(m.batchedInfos[i].position, m.batchedInfos[i].rotation, m.batchedInfos[i].scale);
+		m.batchedInfos[i].inverseModelMatrix = CalculateInverseModelMatrix(m.batchedInfos[i].position, m.batchedInfos[i].rotation, m.batchedInfos[i].scale);
+	}
 
 	GLuint VAO, VBO, EBO;
 	glCreateVertexArrays(1, &VAO);
@@ -482,7 +487,7 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 
-	//convert this to something the GPU could understand
+	//convert this to something the GPU could understand aka flatten the 2D dynamic array
 	std::vector<IndicesGroup> tempFace;
 	for (Face faceArray : m.faces) {
 		for (IndicesGroup iG : faceArray.indicesGroups) {
@@ -535,18 +540,27 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, batchedInfoBuffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, materialBuffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, bvhBuffer);
+	FrameTimer timer(60);
+	timer.Start();
+	float time = 0;
 	while (!glfwWindowShouldClose(window))
 	{
-		
-		if (prog<100) {
+
+		double dt = timer.Tick();
+		double fps = timer.GetFPS();
+		time += dt;
+		if (time>1) {
+			time = 0;
+			std::cout << "FPS: " << fps << " Frame Time: " << dt * 1000 << "ms\n";
+		}
+		if (1) {
 			computeShader.Activate();
-			glUniform1f(halffov, 40);
+			glUniform1f(halffov, 35);
 			glUniform1ui(objectAmount, m.batchedInfos.size());
 			glUniform1ui(progress, prog);
 			glDispatchCompute(ceil(SCREEN_WIDTH / 32), ceil(SCREEN_HEIGHT / 32), 1);
 			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 			prog++;
-			std::cout << prog << "\n";
 		}
 		screenShader.Activate();
 		glBindTextureUnit(0, screenTex);
@@ -618,7 +632,7 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 					newBatchedInfo.scale[k] = bounds[k];
 				}
 				else {
-					newBatchedInfo.scale[k] = -.1;
+					newBatchedInfo.scale[k] = 0.1;
 				}
 			}
 			newBatchedInfo.materialIndex = floor(9 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
@@ -632,7 +646,7 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 int main()
 {
 
-	std::vector<Mesh> mesh = ScanForMesh("Kuromi.mesh");
+	std::vector<Mesh> mesh = ScanForMesh("Dragon.mesh");
 	std::vector<Material> materials;
 
 	Mesh batchedMesh = BatchMesh(mesh);
@@ -645,35 +659,34 @@ int main()
 	float center[3] = { 0,-1,0 };
 	float centerWall[3] = { 0,0,0 };
 	float walls[3] = { 10.f,10.f,10.f };
-	unsigned int dimensions[3] = {2,1,2 };
+	unsigned int dimensions[3] = {2,1,2};
 
 	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
 	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
-	batchedMesh.batchedInfos[0].position[1] = 3.f;
+	batchedMesh.batchedInfos[0].position[0] = 0.f;
+	batchedMesh.batchedInfos[0].position[1] = 2.0f;
 	batchedMesh.batchedInfos[0].position[2] = 0.f;
+	batchedMesh.batchedInfos[0].rotation[1] = -0.f;
 	batchedMesh.batchedInfos[0].scale[0] = 1.f;
-	batchedMesh.batchedInfos[0].scale[1] = 1.f;
+	batchedMesh.batchedInfos[0].scale[1] = 0.2f;
 	batchedMesh.batchedInfos[0].scale[2] = 1.f;
 	batchedMesh.batchedInfos[0].materialIndex = 10;
-	batchedMesh.batchedInfos[1].position[1] = -1.f;
-	batchedMesh.batchedInfos[1].position[2] = 1.f;
+	batchedMesh.batchedInfos[1].position[0] = 0.f;
+	batchedMesh.batchedInfos[1].position[1] = -1.5f;
+	batchedMesh.batchedInfos[1].position[2] = -0.f;
+	batchedMesh.batchedInfos[1].rotation[1] = -0.f;
 	batchedMesh.batchedInfos[1].scale[0] = 1.f;
 	batchedMesh.batchedInfos[1].scale[1] = 1.f;
 	batchedMesh.batchedInfos[1].scale[2] = 1.f;
 	batchedMesh.batchedInfos[1].materialIndex = 1;
-	//batchedMesh.batchedInfos[7].scale[0] = 2;
-	//batchedMesh.batchedInfos[7].scale[1] = 2;
-	//batchedMesh.batchedInfos[7].scale[2] = 2;
-	//batchedMesh.batchedInfos[7].position[0] = -0;
-	//batchedMesh.batchedInfos[7].position[2] = -10;
-	batchedMesh.batchedInfos[2].materialIndex = 12;
-	batchedMesh.batchedInfos[3].materialIndex = 12;
-	batchedMesh.batchedInfos[4].materialIndex = 12;
-	batchedMesh.batchedInfos[5].materialIndex = 12;
-	batchedMesh.batchedInfos[6].materialIndex = 12;
-	batchedMesh.batchedInfos[7].materialIndex = 12;
+	//batchedMesh.batchedInfos[2].materialIndex = 12;
+	//batchedMesh.batchedInfos[3].materialIndex = 12;
+	//batchedMesh.batchedInfos[4].materialIndex = 12;
+	//batchedMesh.batchedInfos[5].materialIndex = 12;
+	//batchedMesh.batchedInfos[6].materialIndex = 12;
+	//batchedMesh.batchedInfos[7].materialIndex = 12;
 	std::vector<Material> materialArray = CreateMaterialArray(13);
-	materialArray[10].emissive = 2;
+	materialArray[10].emissive = 4;
 	materialArray[11].color = Vector4(1.f, 1, 1, 1.f);
 	materialArray[11].roughness =1;
 	materialArray[12].color = Vector4(1.f, 1, 1, 1.f);
