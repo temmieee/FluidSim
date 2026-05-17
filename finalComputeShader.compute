@@ -236,7 +236,7 @@ vec3 GetRandomDirection(inout uint seed)
 	return vec;
 }
 float AABBTest(Ray ray, BVHnode bvhNode){
-	float dist=-1f;
+	float dist=999999999;
 	vec3 t1=(bvhNode.maxBound-ray.origin)*ray.inverseDir;
 	vec3 t2=(bvhNode.minBound-ray.origin)*ray.inverseDir;
 	 // Use min/max to ensure tMin is the closest intersection
@@ -256,7 +256,7 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 	HitInfo hitInfo;
 	//hitInfo.position=vec3(0,0,0);
 	hitInfo.objectIndex = -1;
-	hitInfo.distance = 999999999;
+	hitInfo.distance = 99999999;
 	float kEpsilon = 0.0000001;
 	BVHnode currBVH=bvhData[inBVHindex];
 	for (int i=currBVH.index*3;i<(currBVH.index+currBVH.amount)*3;i+=3)
@@ -303,7 +303,7 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 		vec3 actualNormal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
 		hitInfo.position=P;
 		hitInfo.normal=actualNormal;
-		//hitInfo.objectIndex = faceData[i].w;
+		hitInfo.objectIndex = 0;
 	}
 	return hitInfo;
 }
@@ -311,16 +311,21 @@ HitInfo GetHitInfoFromRay(Ray ray)
 {
 	HitInfo hitInfo;
 	hitInfo.objectIndex = -1;
-	hitInfo.distance = 999999999;
+	hitInfo.distance = 99999999;
 	float boxCheck=0;
 	float lim=70;
+	float minDist=99999999;
 	for (uint objIndex=0; objIndex <objectAmount; objIndex++)
 	{
 		mat4 inverseModelMatrix=objectData[objIndex].inverseModelMatrix;
 		mat4 modelMatrix=objectData[objIndex].modelMatrix;
 		Ray localRay;
 		localRay=TransformRayToLocalSpace(ray,inverseModelMatrix);
-		uint bvhArray[64];
+		//adding these checks actually makes it slower but it is technically correct damn it
+		vec3 worldHitPoint = ray.origin + ray.direction * hitInfo.distance;
+		vec3 localHitPoint = (inverseModelMatrix * vec4(worldHitPoint, 1.0)).xyz;
+		minDist = length(localHitPoint - localRay.origin);
+		uint bvhArray[16];
 		uint currBVHArrayIndex=0;
 		HitInfo tempHitInfo;
 		tempHitInfo.distance=999999999;
@@ -333,12 +338,10 @@ HitInfo GetHitInfoFromRay(Ray ray)
 			currBVHArrayIndex--;
 			BVHnode currNode=bvhData[bvhArray[currBVHArrayIndex]];
 			HitInfo currHitInfo;
-			currHitInfo.distance=999999999;
+			currHitInfo.distance=99999999;
 			currHitInfo.objectIndex = -1;
 			float currBVHdist=AABBTest(localRay,currNode);
-			if (currBVHdist<0) continue;
-			if (currBVHdist>tempHitInfo.distance) continue;
-			if (currBVHdist>hitInfo.distance) continue;
+			if (currBVHdist>minDist) continue;
 			if (currNode.amount!=0)
 			{		
 					
@@ -348,32 +351,29 @@ HitInfo GetHitInfoFromRay(Ray ray)
 			{
 				float firstNodeDist=AABBTest(localRay,bvhData[currNode.index]);
 				float secondNodeDist=AABBTest(localRay,bvhData[currNode.index+1]);
-				if (firstNodeDist<0&&secondNodeDist<0) continue;
 				if (firstNodeDist>secondNodeDist)
 				{
-					if (secondNodeDist>0){
-					//if(secondNodeDist>tempHitInfo.distance) continue;
-					if(secondNodeDist>hitInfo.distance) continue;
+					if (secondNodeDist>minDist)continue;
+					if((firstNodeDist<minDist)){
 					bvhArray[currBVHArrayIndex]=currNode.index;
 					bvhArray[currBVHArrayIndex+1]=currNode.index+1;
 					currBVHArrayIndex+=2;
 					}
 					else {
-						bvhArray[currBVHArrayIndex]=currNode.index;
+						bvhArray[currBVHArrayIndex]=currNode.index+1;
 						currBVHArrayIndex++;
 					}
 				}
 				else
 				{
-					if (firstNodeDist>0){
-					//if(firstNodeDist>tempHitInfo.distance) continue;
-					if(firstNodeDist>hitInfo.distance) continue;
+					if (firstNodeDist>minDist)continue;
+					if ((secondNodeDist<minDist)){
 					bvhArray[currBVHArrayIndex]=currNode.index+1;
 					bvhArray[currBVHArrayIndex+1]=currNode.index;
 					currBVHArrayIndex+=2;
 					}
 					 else {
-					 bvhArray[currBVHArrayIndex]=currNode.index+1;
+					 bvhArray[currBVHArrayIndex]=currNode.index;
 					 currBVHArrayIndex++;
 					 }
 					
@@ -382,14 +382,16 @@ HitInfo GetHitInfoFromRay(Ray ray)
 			
 			if (currHitInfo.distance>tempHitInfo.distance) continue;
 			tempHitInfo=currHitInfo;
+			minDist=tempHitInfo.distance;
 
 			
 		}
 	//tempHitInfo=TransformHitInfoToWorldSpace(tempHitInfo,modelMatrix);
+	if (tempHitInfo.objectIndex==-1) continue;
 	vec3 directionalHit=localRay.direction*tempHitInfo.distance;
 	float worldDistance=length(mat3(modelMatrix)*directionalHit);
 	tempHitInfo.distance=worldDistance;
-	if (tempHitInfo.distance>hitInfo.distance) continue;
+	if (tempHitInfo.distance>=hitInfo.distance) continue;
 	hitInfo=tempHitInfo;
 	hitInfo.objectIndex=int(objIndex);
 	}
