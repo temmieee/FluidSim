@@ -63,9 +63,9 @@ struct Face {
 };
 struct BVHnode {
 	float maxBound[3];
-	int index;
+	unsigned int index;
 	float minBound[3];
-	int amount;
+	unsigned int amount;
 	BVHnode();
 	BVHnode(float inMax[], float inMin[], unsigned int inIndex, unsigned int inAmount);
 };
@@ -94,7 +94,7 @@ public:
 	std::vector<BVHnode> bvh;
 	std::vector<BatchedInfo> batchedInfos;
 };
-Mesh BatchMesh(std::vector<Mesh> meshes);
+Mesh BatchMesh(std::vector<Mesh>& meshes);
 std::vector<Mesh> ScanForMesh(const char* meshFile);
 float ReadNextNumber(std::string* stream);
 unsigned int GetIndex(std::string* stream);

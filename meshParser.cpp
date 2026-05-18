@@ -1,5 +1,5 @@
 #include "meshParser.h"
-const int triangle = 2;
+const unsigned int triangle = 10;
 int total[3] = { 0,0,0 };
 Vector3::Vector3() {
 	x = 0;
@@ -41,7 +41,8 @@ Material::Material(Vector4 inCol, float inRoughness, float inMetallic, float inE
 float ReadNextNumber(std::string* stream)
 {
 	std::string tempString = *stream;
-	if (tempString.find(' ')!=std::string::npos)
+	char begin = tempString.find(' ');
+	if (begin !=std::string::npos)
 	{
 		char begin = tempString.find(' ');
 		if (tempString.find(' ', begin + 1)!= std::string::npos)
@@ -113,12 +114,15 @@ UV::UV(std::string line)
 	}
 }
 Face::Face(std::string line)
+	: averagePosition{ 0.0f, 0.0f, 0.0f }, maxPosition{ 0.0f, 0.0f, 0.0f }, minPosition{ 0.0f, 0.0f, 0.0f }
 {
-	for (char i=0;(i < 10) && (line.find(' ')!= std::string::npos); i++) {
+	for (std::size_t i = 0; (i < 10) && (line.find(' ') != std::string::npos); ++i) {
 		indicesGroups.push_back(ReadNextIndexGroup(&line));
 	}
 }
-Face::Face(IndicesGroup first, IndicesGroup second, IndicesGroup third) {
+Face::Face(IndicesGroup first, IndicesGroup second, IndicesGroup third)
+	: averagePosition{ 0.0f, 0.0f, 0.0f }, maxPosition{ 0.0f, 0.0f, 0.0f }, minPosition{ 0.0f, 0.0f, 0.0f }
+{
 	indicesGroups.push_back(first);
 	indicesGroups.push_back(second);
 	indicesGroups.push_back(third);
@@ -132,35 +136,39 @@ std::vector<Face> TriangulateFace(Face face)
 	}
 	return faces;
 }
-BatchedInfo::BatchedInfo() {
-	startFace = 0;
-	facesAmount = 0;
-	materialIndex = 0;
-	priorityIndex = 0;
-	bvhIndex = 0;
-	for (char i = 0; i < 3; i++) {
-		position[i] = 0;
-		rotation[i] = 0;
-		scale[i] = 0;
-		if (i < 2) padding[i] = 0;
-	}
+BatchedInfo::BatchedInfo()
+	: startFace(0),
+	facesAmount(0),
+	materialIndex(0),
+	priorityIndex(0),
+	bvhIndex(0),
+	position{ 0.0f, 0.0f, 0.0f },
+	rotation{ 0.0f, 0.0f, 0.0f },
+	scale{ 0.0f, 0.0f, 0.0f },
+	padding{ 0.0f, 0.0f },
+	modelMatrix(Mat4()),
+	inverseModelMatrix(Mat4())
+{
 }
-BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]) {
-	startFace = sFace;
-	facesAmount = fAmount;
-	materialIndex = mIndex;
-	priorityIndex = prioIndex;
-	bvhIndex =bIndex;
-	for (char i = 0; i < 3; i++) {
+BatchedInfo::BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[])
+	: startFace(sFace),
+	facesAmount(fAmount),
+	materialIndex(mIndex),
+	priorityIndex(prioIndex),
+	bvhIndex(bIndex),
+	modelMatrix(Mat4()),
+	inverseModelMatrix(Mat4())
+{
+	for (int i = 0; i < 3; i++) {
 		position[i] = pos[i];
 		rotation[i] = rot[i];
 		scale[i] = s[i];
-		if (i<2) padding[i] = 0;
 	}
-
+	padding[0] = 0.0f;
+	padding[1] = 0.0f;
 }
 BVHnode::BVHnode() {
-	for (char i = 0; i++; i < 3) {
+	for (char i = 0; i < 3; i++) {
 		maxBound[i] = 0;
 		minBound[i] = 0;
 		index = 0;
@@ -192,92 +200,122 @@ void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesA
 	inMesh->bvh.push_back(bvhNode);
 }
 void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, unsigned int facesAmount) {
-	float inMaxBound[3];
-	float inMinBound[3];
-	for (char i = 0; i < 3; i++) {
-		inMaxBound[i] = inMesh->bvh[parent].maxBound[i];
-		inMinBound[i] = inMesh->bvh[parent].minBound[i];
-	}
-	//split
-	
-	float diagonalVector[3];
-	char bestDimension;
-	char division = 20;
-	float lowestCost = INFINITY;
-	char bestCostIndex=-1;
-	for (char dimensionPartition = 0; dimensionPartition < 3; dimensionPartition++) {
-		for (char iterateSAH = 0; iterateSAH < division; iterateSAH++) {
-			float mid = inMinBound[dimensionPartition] + (iterateSAH + 1) * (inMaxBound[dimensionPartition] - inMinBound[dimensionPartition]) / (division + 1);
-			unsigned int midIndex = firstFace;
-			bool second = false;
-			//sort to 2 halves
-			for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
-				if (inMesh->faces[faceIndex].averagePosition[dimensionPartition] < mid)
-				{
-					std::swap(inMesh->faces[faceIndex], inMesh->faces[midIndex]);
-					midIndex++;
-				}
-			}
-			//calculate cost
-			float currCost;
-			float tempMaxBoundFirst[3] = { -INFINITY ,-INFINITY ,-INFINITY };
-			float tempMinBoundFirst[3] = { INFINITY ,INFINITY ,INFINITY };
-			float tempMaxBoundSecond[3] = { -INFINITY ,-INFINITY ,-INFINITY };
-			float tempMinBoundSecond[3] = { INFINITY ,INFINITY ,INFINITY };
-			for (unsigned int i = firstFace; i < midIndex; i++) {
-				for (char dimension = 0; dimension < 3; dimension++) {
-					tempMaxBoundFirst[dimension] = tempMaxBoundFirst[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBoundFirst[dimension] : inMesh->faces[i].maxPosition[dimension];
-					tempMinBoundFirst[dimension] = tempMinBoundFirst[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBoundFirst[dimension] : inMesh->faces[i].minPosition[dimension];
-				}
-			}
-			for (unsigned int i = midIndex; i < firstFace + facesAmount; i++) {
-				for (char dimension = 0; dimension < 3; dimension++) {
-					tempMaxBoundSecond[dimension] = tempMaxBoundSecond[dimension] > inMesh->faces[i].maxPosition[dimension] ? tempMaxBoundSecond[dimension] : inMesh->faces[i].maxPosition[dimension];
-					tempMinBoundSecond[dimension] = tempMinBoundSecond[dimension] < inMesh->faces[i].minPosition[dimension] ? tempMinBoundSecond[dimension] : inMesh->faces[i].minPosition[dimension];
-				}
-			}
-			float firstDiagonalVector[3];
-			float secondDiagonalVector[3];
-			for (char dimension = 0; dimension < 3; dimension++) {
-				firstDiagonalVector[dimension] = tempMaxBoundFirst[dimension] - tempMinBoundFirst[dimension];
-				secondDiagonalVector[dimension] = tempMaxBoundSecond[dimension] - tempMinBoundSecond[dimension];
-			}
-			currCost = (firstDiagonalVector[0] * firstDiagonalVector[1] + firstDiagonalVector[1] * firstDiagonalVector[2] + firstDiagonalVector[2] * firstDiagonalVector[0]) * (midIndex - firstFace)
-				+ (secondDiagonalVector[0] * secondDiagonalVector[1] + secondDiagonalVector[1] * secondDiagonalVector[2] + secondDiagonalVector[2] * secondDiagonalVector[0]) * (facesAmount - midIndex + firstFace);
-			if (currCost < lowestCost) {
-				bestCostIndex = iterateSAH;
-				bestDimension = dimensionPartition;
-				lowestCost = currCost;
-			}
-		}
+	//safeguard
+    if (facesAmount <= triangle) {
+        inMesh->bvh[parent].amount = facesAmount;
+        return;
+    }
 
-	}
-	total[bestDimension]++;
-	//construct actual children BVH
-	float mid = inMinBound[bestDimension] + (bestCostIndex + 1) * (inMaxBound[bestDimension] - inMinBound[bestDimension]) / (division + 1);
- 	unsigned int actualMidIndex = firstFace;
-	//sort to 2 halves
-	for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; faceIndex++) {
-		if (inMesh->faces[faceIndex].averagePosition[bestDimension] < mid)
-		{
-			std::swap(inMesh->faces[faceIndex], inMesh->faces[actualMidIndex]);
-			actualMidIndex++;
-		}
-	}
-	unsigned int nextAmount = actualMidIndex - firstFace;
-	unsigned int currIndex = inMesh->bvh.size();
-	ConstructChildBVH(inMesh, firstFace, nextAmount);
-	ConstructChildBVH(inMesh, actualMidIndex, facesAmount - nextAmount);
-	if (triangle<nextAmount) {
-		inMesh->bvh[currIndex].index = currIndex + 2;
-		ConstructBVH(inMesh, currIndex, firstFace, nextAmount);
-	}
-	if (triangle<(facesAmount - nextAmount)) {
-		unsigned int secondIndex = inMesh->bvh.size();
-		inMesh->bvh[currIndex+1].index = secondIndex;
-		ConstructBVH(inMesh, currIndex+1, actualMidIndex, facesAmount - nextAmount);
-	//	std::cout << actualMidIndex << std::endl;
-	}
+    float inMaxBound[3];
+    float inMinBound[3];
+    for (int i = 0; i < 3; ++i) {
+        inMaxBound[i] = inMesh->bvh[parent].maxBound[i];
+        inMinBound[i] = inMesh->bvh[parent].minBound[i];
+    }
+
+    const unsigned int division = 20;
+    float lowestCost = INFINITY;
+    unsigned int bestDimension = 0;
+    unsigned int bestCostIndex = 0;
+
+    for (unsigned int dimensionPartition = 0; dimensionPartition < 3; ++dimensionPartition) {
+        for (unsigned int iterateSAH = 0; iterateSAH < division; ++iterateSAH) {
+            float mid = inMinBound[dimensionPartition] + (iterateSAH + 1u) * (inMaxBound[dimensionPartition] - inMinBound[dimensionPartition]) / (division + 1u);
+            unsigned int midIndex = firstFace;
+
+            for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; ++faceIndex) {
+                if (inMesh->faces[faceIndex].averagePosition[dimensionPartition] < mid) {
+                    std::swap(inMesh->faces[faceIndex], inMesh->faces[midIndex]);
+                    ++midIndex;
+                }
+            }
+
+            unsigned int countFirst = (midIndex > firstFace) ? (midIndex - firstFace) : 0u;
+            unsigned int countSecond = ((firstFace + facesAmount) > midIndex) ? ((firstFace + facesAmount) - midIndex) : 0u;
+
+            if (countFirst == 0 || countSecond == 0) {
+                continue;
+            }
+
+            float tempMaxBoundFirst[3] = { -INFINITY, -INFINITY, -INFINITY };
+            float tempMinBoundFirst[3] = { INFINITY, INFINITY, INFINITY };
+            float tempMaxBoundSecond[3] = { -INFINITY, -INFINITY, -INFINITY };
+            float tempMinBoundSecond[3] = { INFINITY, INFINITY, INFINITY };
+
+            for (unsigned int i = firstFace; i < midIndex; ++i) {
+                for (int d = 0; d < 3; ++d) {
+                    tempMaxBoundFirst[d] = std::max(tempMaxBoundFirst[d], inMesh->faces[i].maxPosition[d]);
+                    tempMinBoundFirst[d] = std::min(tempMinBoundFirst[d], inMesh->faces[i].minPosition[d]);
+                }
+            }
+            for (unsigned int i = midIndex; i < firstFace + facesAmount; ++i) {
+                for (int d = 0; d < 3; ++d) {
+                    tempMaxBoundSecond[d] = std::max(tempMaxBoundSecond[d], inMesh->faces[i].maxPosition[d]);
+                    tempMinBoundSecond[d] = std::min(tempMinBoundSecond[d], inMesh->faces[i].minPosition[d]);
+                }
+            }
+
+            float firstDiag[3], secondDiag[3];
+            for (int d = 0; d < 3; ++d) {
+                firstDiag[d] = tempMaxBoundFirst[d] - tempMinBoundFirst[d];
+                secondDiag[d] = tempMaxBoundSecond[d] - tempMinBoundSecond[d];
+            }
+
+            float saFirst = firstDiag[0]*firstDiag[1] + firstDiag[1]*firstDiag[2] + firstDiag[2]*firstDiag[0];
+            float saSecond = secondDiag[0]*secondDiag[1] + secondDiag[1]*secondDiag[2] + secondDiag[2]*secondDiag[0];
+
+            float currCost = saFirst * countFirst + saSecond * countSecond;
+
+            if (currCost < lowestCost) {
+                lowestCost = currCost;
+                bestDimension = dimensionPartition;
+                bestCostIndex = iterateSAH;
+            }
+        }
+    }
+
+    //make this node a leaf again if no valid split midpoint
+    if (lowestCost == INFINITY) {
+        inMesh->bvh[parent].amount = facesAmount;
+        return;
+    }
+
+    // perform actual split
+    float mid = inMinBound[bestDimension] + (bestCostIndex + 1u) * (inMaxBound[bestDimension] - inMinBound[bestDimension]) / (division + 1u);
+    unsigned int actualMidIndex = firstFace;
+    for (unsigned int faceIndex = firstFace; faceIndex < firstFace + facesAmount; ++faceIndex) {
+        if (inMesh->faces[faceIndex].averagePosition[bestDimension] < mid) {
+            std::swap(inMesh->faces[faceIndex], inMesh->faces[actualMidIndex]);
+            ++actualMidIndex;
+        }
+    }
+
+    unsigned int nextAmount = actualMidIndex - firstFace;
+
+    // another guard
+    if (nextAmount == 0 || nextAmount == facesAmount) {
+        inMesh->bvh[parent].amount = facesAmount;
+        return;
+    }
+
+    unsigned int currIndex = inMesh->bvh.size();
+    ConstructChildBVH(inMesh, firstFace, nextAmount);
+    ConstructChildBVH(inMesh, actualMidIndex, facesAmount - nextAmount);
+
+    if (triangle < static_cast<int>(nextAmount)) {
+        inMesh->bvh[currIndex].index = static_cast<int>(currIndex + 2);
+        ConstructBVH(inMesh, currIndex, firstFace, nextAmount);
+    } else {
+        inMesh->bvh[currIndex].amount = static_cast<int>(nextAmount);
+    }
+
+    if (triangle < static_cast<int>(facesAmount - nextAmount)) {
+        unsigned int secondIndex = inMesh->bvh.size();
+        inMesh->bvh[currIndex + 1].index = static_cast<int>(secondIndex);
+        ConstructBVH(inMesh, currIndex + 1, actualMidIndex, facesAmount - nextAmount);
+    } else {
+        inMesh->bvh[currIndex + 1].amount = static_cast<int>(facesAmount - nextAmount);
+    }
 }
 void ConstructBVHFromMesh(Mesh* inMesh) {
 
@@ -309,7 +347,7 @@ void ConstructBVHFromMesh(Mesh* inMesh) {
 	std::cout << total[0] << " " << total[1] << " " << total[2] << std::endl;
 }
 
-Mesh BatchMesh(std::vector<Mesh> meshes) {
+Mesh BatchMesh(std::vector<Mesh>& meshes) {
 	Mesh batchedMesh;
 	unsigned int curFaceIndex=0;
 	for (unsigned int meshIndex = 0; meshIndex < meshes.size(); meshIndex++) {

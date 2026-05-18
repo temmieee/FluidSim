@@ -109,9 +109,9 @@ struct UV {
 };
 struct BVHnode {
 	vec3 maxBound;
-	int index;
+	uint index;
 	vec3 minBound;
-	int amount;
+	uint amount;
 };
 
 struct Object {
@@ -259,7 +259,7 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 	hitInfo.distance = 99999999;
 	float kEpsilon = 0.0000001;
 	BVHnode currBVH=bvhData[inBVHindex];
-	for (int i=currBVH.index*3;i<(currBVH.index+currBVH.amount)*3;i+=3)
+	for (uint i=currBVH.index*3;i<(currBVH.index+currBVH.amount)*3;i+=3)
 	{
 		vec3 v0 = vertexData[faceData[i].x].xyz;
 		vec3 v1 = vertexData[faceData[i+1].x].xyz;
@@ -405,14 +405,14 @@ HitInfo GetHitInfoFromRay(Ray ray)
 uniform float halffov; 
 void main()
 {
-	vec4 pixel = vec4(0.5, 0.5, 0.5, 1.0);
+	vec4 pixel = vec4(0.0, 0.0, 0.0, 1.0);
 	//vec4 pixel = vec4(0.0, 0.5, 0.0, 1.0);
 	ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
 	ivec2 dimensions = imageSize(screen);
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 0, -5);
+	vec3 cameraPos = vec3(0, 0, -4);
 	vec3 rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
@@ -430,7 +430,7 @@ void main()
 		uint basePixelIndex = uint(pixelCoords.x) + uint(pixelCoords.y) * uint(dimensions.x);
 		rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.0001);
-		for (int j = 0; j <10; j++)
+		for (int j = 0; j <5; j++)
 		{
 			Ray ray;
 			ray.origin = rayOrigin;
@@ -489,7 +489,25 @@ void main()
 		}
 	}
 	uint blurPixels = ((blurAmount * 2 + 1) * (blurAmount * 2 + 1));
-	blurColor.xyz = blurColor.xyz / (blurPixels*4)+outColor.xyz*3/4;
+
+	vec3 blurredAvg;
+	if (blurPixels > 0u) {
+		blurredAvg = blurColor.xyz / float(blurPixels);
+	} else {
+		blurredAvg = outColor.xyz;
+	}
+	const float blendWeight = 1.0;
+	vec3 colorLinear = mix(blurredAvg, outColor.xyz, blendWeight);
+
+	// Reinhard tone mapping
+	colorLinear = colorLinear / (colorLinear + vec3(1.0));
+
+	// Gamma correction (convert to display space)
+	colorLinear = pow(max(colorLinear, vec3(0.0)), vec3(1.0 / 2.2));
+
+	blurColor.xyz = colorLinear;
+	blurColor.w = 1.0;
+
 	//pixel = vec4(float(pixelCoords.x)/ float(dimensions.x), float(pixelCoords.y)/ float(dimensions.y), 0, 1);
 	//uint rng=pixelCoords.x+pixelCoords.y*dimensions.x;
 	//pixel=vec4(GetRandomDirection(rng),1);
