@@ -1,5 +1,5 @@
 #version 460 core
-
+#define PI 3.14159265
 mat4 rotationX(float angle) {
     float c = cos(angle), s = sin(angle);
     return mat4(
@@ -133,6 +133,7 @@ struct HitInfo {
 	int objectIndex;
 	float distance;
 	float debug;
+	uint triangleIndex;
 	Material material;
 };
 
@@ -164,7 +165,9 @@ layout(std430, binding = 8) buffer bvhBuffer {
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 uniform uint objectAmount;
+uniform uint lightAmount;
 uniform uint progress;
+
 
 Ray TransformRayToLocalSpace(Ray ray, mat4 inverseModelMatrix) {
     ray.origin = (inverseModelMatrix * vec4(ray.origin, 1.0)).xyz;
@@ -195,7 +198,7 @@ float Halton(uint index, uint base) {
 // Cosine-weighted hemisphere sampling
 vec3 CosineSampleHemisphere(float u1, float u2) {
     float r = sqrt(max(0.0, u1));
-    float theta = 2.0 * 3.14159265359 * u2;
+    float theta = 2.0 * PI * u2;
     float x = r * cos(theta);
     float y = r * sin(theta);
     float z = sqrt(max(0.0, 1.0 - u1));
@@ -234,6 +237,119 @@ vec3 GetRandomDirection(inout uint seed)
 	float z = RandomValueNormalDistribution(seed);
 	vec3 vec = normalize(vec3(x, y, z));
 	return vec;
+}
+float CalculateTrianglePdf(int objectIndex, uint triangleIndex){
+	
+	mat4 modelMatrix=objectData[objectIndex].modelMatrix;
+	vec3 firstVertex=vertexData[faceData[triangleIndex].x].xyz;
+	vec3 secondVertex=vertexData[faceData[triangleIndex+1].x].xyz;
+	vec3 thirdVertex=vertexData[faceData[triangleIndex+2].x].xyz;
+
+	firstVertex=(modelMatrix*vec4(firstVertex,1.0)).xyz;
+	secondVertex=(modelMatrix*vec4(secondVertex,1.0)).xyz;
+	thirdVertex=(modelMatrix*vec4(thirdVertex,1.0)).xyz;
+				
+	// Calculate area for pdf
+	float area = 0.5f * length(cross((firstVertex-secondVertex), (firstVertex-thirdVertex)));
+				
+	float pdf = 1.0f/(float(lightAmount)*float(objectData[objectIndex].facesAmount)*area);
+
+	return pdf;
+}
+float balanceHeuristic(float pdf, float pdf_other) {
+				return pdf / (pdf + pdf_other);
+			}
+float PdfPhong(vec3 wi,vec3 normal,vec3 wo, int materialIndex)
+{
+	float ks = 1-materialData[materialIndex].roughness;
+	float kd = 1.0f - ks;
+				
+	float n = (2.0f / (pow(1.0f - ks, 3.0))) - 2.0;   
+			
+	vec3 reflectionAxis = reflect(wo, normal);
+	reflectionAxis = normalize(reflectionAxis);
+
+	float pdfDiffuse = 1.0f/(4.0f * PI);
+	float pdfSpecular = ((n + 1.0f) / (2.0f * PI)) * pow(max(dot(wi, reflectionAxis), 0.001), n);
+
+	return kd * pdfDiffuse + ks * pdfSpecular;
+}
+vec3 SampleMaterialPhong(vec3 normal, vec3 w_o, inout float pdf, int materialIndex, inout uint rng){
+
+	// phong reflection model consists out of a diffuse (k_d) and specular part (k_s), where k_d + k+s <= 1
+	// however, we don't have absorption, so here k_d + k_s = 1
+	float k_s = 1-materialData[materialIndex].roughness;
+	float k_d = 1.0f - k_s;
+				
+	// mapping from smoothness to specular exponent, try to match Sebastian Lagues specular model closely
+	float n = (2.0f / (pow(max(1.0f - k_s,0.01), 3.0f))) - 2.0f;   
+	vec3 w_i = vec3(0.0f, 0.0f, 0.0f);
+			
+	vec3 reflectionAxis = reflect(w_o, normal);                        // R is in the same hemisphere as N
+	reflectionAxis = normalize(reflectionAxis);
+	vec3 randomDiffuse=normalize(GetRandomDirection(rng)+normal);
+	// sample diffuse
+	if( RandomValue(rng) < k_d){
+	w_i=randomDiffuse;
+	}
+	else {
+		vec3 specularDir=reflectionAxis;
+		w_i=normalize(mix(reflectionAxis, mix(specularDir, randomDiffuse, 0.01), k_d));
+	} 
+			
+	float pdf_diffuse = 1.0f/(4.0f * PI);
+	float pdf_specular = ((n + 1.0f) / (2.0f * PI)) * pow(max(dot(w_i, reflectionAxis), 0.001f), n);
+
+	pdf = k_d * pdf_diffuse + k_s * pdf_specular;
+	 if (isnan(pdf)) pdf = 0.0;
+	return w_i;
+}			
+vec3 EvaluateMaterialPhong(vec3 wi, vec3 normal, vec3 wo, int materialIndex){
+
+	float ks = 1-materialData[materialIndex].roughness;
+	float kd = 1.0f - ks;
+			
+	float n = (2.0f / (pow(max(1.0f - ks,0.01), 3.0f))) - 2.0f;   	
+	vec3 reflectionAxis = normalize(reflect(wo, normal));
+	vec3 brdf_s = (n + 2.0f)/(2.0f * PI) * pow(max(0.0f, dot(reflectionAxis, wi)), n) * materialData[materialIndex].col.xyz; 
+	
+	if (any(isnan(brdf_s))) {
+				brdf_s = 0.0.xxx;   // replace NaNs with black
+			}
+	vec3 brdf_d = materialData[materialIndex].col.xyz/ PI;
+				
+	return brdf_d * kd + brdf_s * ks;	
+}
+void SampleDirectLight(out vec3 lightPos, out vec3 normal, out float pdf, inout uint seed){
+	uint objectIndex = uint(RandomValue(seed) * float(lightAmount));
+	float rand0=fract(RandomValue(seed));
+	uint triangleIndex= uint(rand0*objectData[objectIndex].facesAmount);
+	float rand1=fract(RandomValue(seed));
+	float rand2=fract(RandomValue(seed));
+	if ((rand1+rand2)>1){
+		rand1=1-rand1;
+		rand2=1-rand2;
+	}
+	mat4 modelMatrix=objectData[objectIndex].modelMatrix;
+	uint index=(objectData[objectIndex].startFace+triangleIndex)*3;
+	vec3 firstVertex=vertexData[faceData[index].x].xyz;
+	vec3 secondVertex=vertexData[faceData[index+1].x].xyz;
+	vec3 thirdVertex=vertexData[faceData[index+2].x].xyz;
+
+	firstVertex=(modelMatrix*vec4(firstVertex,1.0)).xyz;
+	secondVertex=(modelMatrix*vec4(secondVertex,1.0)).xyz;
+	thirdVertex=(modelMatrix*vec4(thirdVertex,1.0)).xyz;
+	lightPos=firstVertex*rand1+secondVertex*rand2+thirdVertex*(1-rand1-rand2);
+	vec3 actualNormalv0 = normalData[faceData[index].z].xyz;
+	vec3 actualNormalv1 = normalData[faceData[index+ 1].z].xyz;
+	vec3 actualNormalv2 = normalData[faceData[index + 2].z].xyz;
+	vec3 weight = GetWeight(lightPos, firstVertex, secondVertex, thirdVertex);
+	normal = normalize(Lerp3(actualNormalv0, actualNormalv1, actualNormalv2, weight.x, weight.y, weight.z));
+	mat3 normalMatrix=transpose(inverse(mat3(modelMatrix)));
+	normal=normalize(normalMatrix*normal);
+	float area = 0.5 * length(cross((firstVertex-secondVertex), (firstVertex-thirdVertex)));
+	pdf=1/(lightAmount*objectData[objectIndex].facesAmount*3*area);
+	return;
 }
 float AABBTest(Ray ray, BVHnode bvhNode){
 	float dist=999999999;
@@ -304,6 +420,7 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 		hitInfo.position=P;
 		hitInfo.normal=actualNormal;
 		hitInfo.objectIndex = 0;
+		hitInfo.triangleIndex= int(i);
 	}
 	return hitInfo;
 }
@@ -405,6 +522,9 @@ HitInfo GetHitInfoFromRay(Ray ray)
 uniform float halffov; 
 void main()
 {
+	objectData[1].rotation.y=progress*0.0005;
+	objectData[1].inverseModelMatrix=CalculateInverseModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
+	objectData[1].modelMatrix=CalculateModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
 	vec4 pixel = vec4(0.0, 0.0, 0.0, 1.0);
 	//vec4 pixel = vec4(0.0, 0.5, 0.0, 1.0);
 	ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
@@ -420,6 +540,7 @@ void main()
 	vec3 col = vec3(1, 1, 1);
 	vec3 light = vec3(0, 0, 0);
 	uint rayPerPixel = 1;
+	uint bounce = 10;
 	float distance;
 	for (int i = 0; i < rayPerPixel; i++) 
 	{
@@ -430,7 +551,10 @@ void main()
 		uint basePixelIndex = uint(pixelCoords.x) + uint(pixelCoords.y) * uint(dimensions.x);
 		rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 		rayDir = normalize(rayOrigin - cameraPos+randomDir*0.0001);
-		for (int j = 0; j <5; j++)
+
+		float previouspdfBRDF=0;
+		vec3 previousNormal=vec3(0,0,0);
+		for (uint j = 0; j <bounce; j++)
 		{
 			Ray ray;
 			ray.origin = rayOrigin;
@@ -439,31 +563,80 @@ void main()
 			HitInfo hitInfo = GetHitInfoFromRay(ray);
 			if (hitInfo.objectIndex == -1)
 			{
-				//hitInfo.position = vec3(0, 0, 0);
-				//hitInfo.normal = vec3(0, 0, 0);
 				break;
 			}
-			Material hitMaterial=materialData[objectData[hitInfo.objectIndex].materialIndex];
-			float roughness = hitMaterial.roughness;
 			rng = pixelCoords.x + pixelCoords.y * dimensions.x + dimensions.x * dimensions.y * (i+j+progress);
-			randomDir= normalize(GetRandomDirection(rng));
-			uint sampleIndex = basePixelIndex + uint(i) * 65536u + uint(j) * 257u + uint(progress) * 13u;
-			float u1 = Halton(sampleIndex, 2u);
-			float u2 = Halton(sampleIndex, 3u);
-			hitInfo.normal=normalize(hitInfo.normal);
-			vec3 haltonRandomDir = ToWorld(CosineSampleHemisphere(u1, u2), hitInfo.normal);
-			vec3 rngRandomDir = normalize(randomDir+hitInfo.normal);
-			vec3 diffuseDir=(rngRandomDir+haltonRandomDir)*2;
-			vec3 refl = normalize(reflect(rayDir, hitInfo.normal));
-			vec3 specularDir = ToWorld(CosineSampleHemisphere(u1, u2), refl);
-			rayDir = normalize(mix(refl, mix(specularDir, rngRandomDir, 0.5), roughness));
+
+			//direct light
+			vec3 directLight = vec3(0.0f, 0.0f, 0.0f);
+			vec3 directLightDirection;
+			float pdfDirectLight;			
+			vec3 lightPos,normal;
+			float V=1;
+
+			SampleDirectLight(lightPos,normal,pdfDirectLight,rng);
+			
+			Ray directLightRay;
+			directLightDirection = normalize(lightPos - hitInfo.position);
+			directLightRay.origin = hitInfo.position+directLightDirection*0.001f;
+			directLightRay.direction = directLightDirection;
+			directLightRay.inverseDir=1/directLightDirection;
+			if(dot(hitInfo.normal, directLightDirection) <= 0.001f){
+				V = 0.0f;
+			}
+			HitInfo dlHitInfo = GetHitInfoFromRay(directLightRay);
+			if (dlHitInfo.objectIndex != -1) {
+				if (length(dlHitInfo.position - lightPos) >0.001f) {
+					V = 0.0f;
+				}
+			}			
+			Material dlMaterial=materialData[objectData[dlHitInfo.objectIndex].materialIndex];
+			float dotA = max(0.001f, abs(dot(normal, directLightDirection)));
+			float dotB = max(0.001f, abs(dot(hitInfo.normal, directLightDirection)));
+			float G = 1.0f/ (length(hitInfo.position-lightPos)*length(hitInfo.position-lightPos)) * dotA * dotB;
+
+			float pdf_brdf_mis = PdfPhong(directLightDirection, hitInfo.normal, rayDir, hitInfo.objectIndex);
+			float misWeight = balanceHeuristic(pdfDirectLight, pdf_brdf_mis * G);
+							
+			directLight = G * V  * dlMaterial.emissive*dlMaterial.col.xyz* misWeight  /pdfDirectLight ;
+			//debug=hitInfo.debug.xxx;
+			//debug=directLight;
+			Material hitMaterial=materialData[objectData[hitInfo.objectIndex].materialIndex];
+			if (hitMaterial.emissive>0)
+			{
+				
+				vec3 emittedLight = hitMaterial.emissive * hitMaterial.col.xyz;
+				float dotA = max(0.001f, abs(dot(previousNormal, rayDir)));
+				float dotB = max(0.001f, abs(dot(hitInfo.normal, rayDir)));
+				float len = length(hitInfo.position - rayOrigin);
+				float G = 1.0f/ (len*len) * dotA * dotB;
+				float pdfDLmiss = CalculateTrianglePdf(hitInfo.objectIndex, hitInfo.triangleIndex);
+				float misWeight = balanceHeuristic(previouspdfBRDF * G , pdfDLmiss);
+							
+				if(j == 0 ){
+					misWeight = 1.0f;
+				}
+					tempLight += emittedLight * tempCol * misWeight;
+					
+				//debug=tempLight;
+				break;
+			}
+			if(j < bounce) {
+				tempLight += directLight * tempCol *  EvaluateMaterialPhong(directLightDirection, hitInfo.normal, ray.direction, objectData[hitInfo.objectIndex].materialIndex);
+			}
+
+			float pdf_brdf;
+			rayDir =SampleMaterialPhong(hitInfo.normal, rayDir, pdf_brdf, objectData[hitInfo.objectIndex].materialIndex, rng);
+			vec3 brdf =  EvaluateMaterialPhong(rayDir, hitInfo.normal, ray.direction, objectData[hitInfo.objectIndex].materialIndex);
+			float cosTheta = max(0.001f, dot(hitInfo.normal, rayDir));
+			tempCol *= cosTheta*clamp(brdf / pdf_brdf, 0.0, 10.0);
+			previouspdfBRDF = pdf_brdf;
+			previousNormal = hitInfo.normal;
+			float roughness = hitMaterial.roughness;
 			rayOrigin = hitInfo.position + rayDir*0.00001;
-			tempLight += hitMaterial.emissive * tempCol;
-			//debug=log(hitInfo.distance).xxx/5;
-			debug=hitInfo.debug.xxx;
-			//debug=hitInfo.normal;
-			//debug=materialData[hitInfo.objectIndex].emissive.xxx;
-			tempCol *= hitMaterial.col.xyz;
+
+
+
 			float p = max(tempCol.x, max(tempCol.y, tempCol.z));
 			if (p<0.1) break;
 			if (RandomValue(rng) >= p) {
@@ -475,8 +648,10 @@ void main()
 		//light = debug;
 	}
 	pixel = vec4(light,1.0);
+	pixel=min(pixel, vec4(10.0));
+	uint clampProgress=min(progress, 20);
 	vec4 previousCol=colorData[pixelCoords.x + pixelCoords.y * dimensions.x];
-	vec4 outColor = previousCol * progress / (progress + 1) + pixel / (progress + 1);
+	vec4 outColor = previousCol * clampProgress / (clampProgress + 1) + pixel / (clampProgress + 1);
 	colorData[pixelCoords.x + pixelCoords.y * dimensions.x] = outColor;
 	if (progress == 100) {
 		//colorData[pixelCoords.x + pixelCoords.y * dimensions.x] = pixel;
