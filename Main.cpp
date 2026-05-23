@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-const unsigned int SCREEN_WIDTH = 1280;
-const unsigned int SCREEN_HEIGHT = 840;
+const unsigned int SCREEN_WIDTH = 2048;
+const unsigned int SCREEN_HEIGHT = 1024;
 
 const unsigned short OPENGL_MAJOR_VERSION = 4;
 const unsigned short OPENGL_MINOR_VERSION = 6;
@@ -435,23 +435,6 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
-	GLuint progressiveTex1;
-	glCreateTextures(GL_TEXTURE_2D, 1, &progressiveTex1);
-	glTextureParameteri(progressiveTex1, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(progressiveTex1, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTextureParameteri(progressiveTex1, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(progressiveTex1, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureStorage2D(progressiveTex1, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glBindImageTexture(1, progressiveTex1, 0, GL_FALSE, 0, GL_DYNAMIC_DRAW, GL_RGBA32F);
-
-	GLuint progressiveTex2;
-	glCreateTextures(GL_TEXTURE_2D, 1, &progressiveTex2);
-	glTextureParameteri(progressiveTex2, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(progressiveTex2, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTextureParameteri(progressiveTex2, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(progressiveTex2, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureStorage2D(progressiveTex2, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glBindImageTexture(2, progressiveTex2, 0, GL_FALSE, 0, GL_DYNAMIC_DRAW, GL_RGBA32F);
 
 	Shader screenShader("default.vert", "progressiveRender.frag");
 	float input1 = 0.5;
@@ -463,6 +446,7 @@ void DrawBatchedMesh(Mesh m, std::vector<Material> materialArray) {
 	//meshBuffer
 	std::vector<Vector4 >colorArray;
 	for (unsigned int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+		colorArray.push_back(Vector4(0, 0, 0, 1));
 		colorArray.push_back(Vector4(0, 0, 0, 1));
 	}
 	GLuint colorBuffer;
@@ -621,9 +605,17 @@ void InstantiateMeshes(std::vector<BatchedInfo>* batchedInfos, float bounds[], u
 				newBatchedInfo.position[0] =posX+center[0];
 				newBatchedInfo.position[1] = posY + center[1];
 				newBatchedInfo.position[2] = posZ + center[2];
-				newBatchedInfo.scale[0] = 0.5;
-				newBatchedInfo.scale[1] = 0.5;
-				newBatchedInfo.scale[2] = 0.5;
+				float scaleFactor=INFINITY;
+				for (char s = 0; s < 3; s++) {
+					float currScaleFactor = bounds[s] / dimensions[s];
+					scaleFactor = scaleFactor < currScaleFactor ? scaleFactor : currScaleFactor;
+					newBatchedInfo.scale[s] =  scaleFactor;
+				}
+				scaleFactor *= 0.5f+ 0.75*static_cast <float>(rand()) / static_cast <float>(RAND_MAX);
+				for (char s = 0; s < 3; s++) {
+					newBatchedInfo.scale[s] = scaleFactor;
+				}
+				newBatchedInfo.rotation[1] = 3.1416*static_cast <float>(rand()) / static_cast <float>(RAND_MAX);
 				newBatchedInfo.materialIndex= floor(9*static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 				newBatchedInfo.bvhIndex = (*batchedInfos)[meshIndex].bvhIndex;
 				batchedInfos->push_back(newBatchedInfo);
@@ -656,63 +648,89 @@ void InstantiateWalls(std::vector<BatchedInfo>* batchedInfos, float bounds[], un
 }
 int main()
 {
-
-	std::vector<Mesh> mesh = ScanForMesh("Dragon.mesh");
+	const char* file = "Dragon";
+	std::vector<Mesh> mesh = ScanForMesh(file);
 	std::vector<Material> materials;
 
 	Mesh batchedMesh = BatchMesh(mesh);
+	batchedMesh.name = file;
 	ConstructBVHFromMesh(&batchedMesh);
 	Vector3 vec3(1, 1, 1);
 	float temp[3] = { 0,0,0 };
 
 	//Instantiate meshes
-	float bounds[3] = { 2.f,1.f,2.f };
-	float center[3] = { 0,-1,0 };
+	float bounds[3] = { 3.f,2.f,3.f };
+	float center[3] = { 0,-1.8f,0 };
 	float centerWall[3] = { 0,0,0 };
 	float walls[3] = { 7.f,3.75f,7.f };
-	unsigned int dimensions[3] = {2,1,2};
+	unsigned int dimensions[3] = {4,1,4};
 
-	//InstantiateMeshes(&batchedMesh.batchedInfos,bounds,dimensions,center,0);
-	InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
 	batchedMesh.batchedInfos[0].position[0] = 0.f;
-	batchedMesh.batchedInfos[0].position[1] = 1.75f;
+	batchedMesh.batchedInfos[0].position[1] = 1.7f;
 	batchedMesh.batchedInfos[0].position[2] = 0.f;
 	batchedMesh.batchedInfos[0].rotation[1] = -0.f;
 	batchedMesh.batchedInfos[0].scale[0] = 1.f;
-	batchedMesh.batchedInfos[0].scale[1] = 0.2f;
+	batchedMesh.batchedInfos[0].scale[1] = 0.1f;
 	batchedMesh.batchedInfos[0].scale[2] = 1.f;
 	batchedMesh.batchedInfos[0].materialIndex = 10;
 	batchedMesh.batchedInfos[1].position[0] = 0.f;
-	batchedMesh.batchedInfos[1].position[1] = -1.4275f;
+	batchedMesh.batchedInfos[1].position[1] = -1.815f;
 	batchedMesh.batchedInfos[1].position[2] = -0.f;
-	batchedMesh.batchedInfos[1].rotation[1] = .25f;
-	batchedMesh.batchedInfos[1].scale[0] = 1.f;
-	batchedMesh.batchedInfos[1].scale[1] = 1.f;
-	batchedMesh.batchedInfos[1].scale[2] = 1.f;
+	batchedMesh.batchedInfos[1].rotation[1] = 0.75f;
+	batchedMesh.batchedInfos[1].scale[0] = 1.5f;
+	batchedMesh.batchedInfos[1].scale[1] = 1.5f;
+	batchedMesh.batchedInfos[1].scale[2] = 1.5f;
+
 	batchedMesh.batchedInfos[1].materialIndex = 11;
-	batchedMesh.batchedInfos[2].materialIndex = 0;
-	batchedMesh.batchedInfos[3].materialIndex = 1;
-	batchedMesh.batchedInfos[4].materialIndex = 12;
-	batchedMesh.batchedInfos[5].materialIndex = 12;
-	batchedMesh.batchedInfos[6].materialIndex = 3;
-	batchedMesh.batchedInfos[7].materialIndex = 2;
-	std::vector<Material> materialArray = CreateMaterialArray(13);
-	materialArray[10].emissive = 2.5f;
+	
+
+
+	std::vector<Material> materialArray = CreateMaterialArray(13+bounds[0]*bounds[1]*bounds[2]);
+	materialArray[10].emissive = 3.0f;
 	materialArray[10].color = { 1,1,1,1 };
-	materialArray[11].color = Vector4(1.f, 0.75f, 0.1f, 1.f);
-	materialArray[11].roughness =0.01f;
+	materialArray[11].color = Vector4(1.f, 0.75f, 0.25f, 1.f);
+	materialArray[11].roughness =0.0001f;
 	materialArray[12].color = Vector4(1.f, 1, 1, 1.f);
 	//wall
-	float wallRoughness = 0.01f;
-	float otherColor = wallRoughness<0.9? 1 - wallRoughness:0.2f;
+	float wallRoughness = 0.001f;
+	float otherColor = wallRoughness<0.9? 1 - wallRoughness:0.1f;
 	materialArray[0].color = Vector4(1.0f,otherColor,otherColor, 1.f);
 	materialArray[2].color = Vector4(otherColor ,1.0f,otherColor, 1.f);
 	materialArray[1].color = Vector4(otherColor,otherColor, 1.0f, 1.f);
-	materialArray[3].color = Vector4(1, 1, 1.0f, 1.f);
+	materialArray[3].color = Vector4(1, 1, 1, 1.f);
 	materialArray[0].roughness = wallRoughness;
 	materialArray[2].roughness = wallRoughness;
 	materialArray[1].roughness = wallRoughness;
 	materialArray[3].roughness = wallRoughness;
+
+
+	//instantiate more meshes for bragging rights
+	if (true){
+		InstantiateWalls(&batchedMesh.batchedInfos, walls, dimensions, centerWall, 0);
+		batchedMesh.batchedInfos[2].materialIndex = 0;
+		batchedMesh.batchedInfos[3].materialIndex = 1;
+		batchedMesh.batchedInfos[4].materialIndex = 12;
+		batchedMesh.batchedInfos[5].materialIndex = 12;
+		batchedMesh.batchedInfos[6].materialIndex = 3;
+		batchedMesh.batchedInfos[7].materialIndex = 2;
+	}
+	if (false) {
+		InstantiateMeshes(&batchedMesh.batchedInfos, bounds, dimensions, center, 1);
+		for (unsigned int i = 8; i < batchedMesh.batchedInfos.size(); i++) {
+			batchedMesh.batchedInfos[i].materialIndex = i + 5;
+		}
+		for (unsigned int i = 8; i < batchedMesh.batchedInfos.size(); i++) {
+			materialArray[batchedMesh.batchedInfos[i].materialIndex].roughness = floor(static_cast <float>(rand()) / static_cast <float>(RAND_MAX)*1);
+		}
+		materialArray[13].emissive = 4.f;
+		materialArray[16].emissive = 4.f;
+		materialArray[24].emissive = 4.f;
+		materialArray[26].emissive = 4.f;
+		materialArray[13].color = { 0.1,1.0,1.,1 };
+		materialArray[16].color = {1,0.3,1,1};
+		materialArray[24].color = { 0.3,0.75,1,1 };
+	}
+
 	//PrintMesh(mesh[0]);
 	DrawBatchedMesh(batchedMesh,materialArray);
 	return 0;

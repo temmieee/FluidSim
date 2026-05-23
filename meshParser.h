@@ -4,6 +4,8 @@
 #include "math.h"
 #include"glad/glad.h"
 #include"GLFW/glfw3.h"
+#include <algorithm>
+#include <unordered_map>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -57,6 +59,8 @@ struct Face {
 	float averagePosition[3];
 	float maxPosition[3];
 	float minPosition[3];
+	unsigned int originalIndex = 0;
+	Face();
 	Face(IndicesGroup first, IndicesGroup second, IndicesGroup third);
 	Face(std::string line);
 
@@ -103,4 +107,8 @@ void ConstructChildBVH(Mesh* inMesh, unsigned int firstFace, unsigned int facesA
 void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, unsigned int facesAmount);
 void ConstructBVHFromMesh(Mesh* inMesh);
 std::vector<Face> TriangulateFace(Face face);
+void WriteBVHNodesToCSV(const Mesh* mesh, const std::string& filename);
+void ReadBVHNodesFromCSV(Mesh* mesh,const std::string& filename);
+void WriteFaceIndexMappingToCSV(const std::vector<Face>& faces, const std::string& filename);
+void RemapFacesFromCSV(std::vector<Face>& faces, const std::string& filename);
 #endif

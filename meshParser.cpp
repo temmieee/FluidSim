@@ -1,5 +1,5 @@
 #include "meshParser.h"
-const unsigned int triangle = 10;
+const unsigned int triangle = 3;
 int total[3] = { 0,0,0 };
 Vector3::Vector3() {
 	x = 0;
@@ -112,6 +112,12 @@ UV::UV(std::string line)
 	for (char i = 0; i < 2; i++) {
 		uv[i] = ReadNextNumber(&line);
 	}
+}
+Face::Face() 
+{
+	averagePosition[0] = averagePosition[1] = averagePosition[2] = 0.0f;
+	maxPosition[0] = maxPosition[1] = maxPosition[2] = 0.0f;
+	minPosition[0] = minPosition[1] = minPosition[2] = 0.0f;
 }
 Face::Face(std::string line)
 	: averagePosition{ 0.0f, 0.0f, 0.0f }, maxPosition{ 0.0f, 0.0f, 0.0f }, minPosition{ 0.0f, 0.0f, 0.0f }
@@ -318,8 +324,18 @@ void ConstructBVH(Mesh* inMesh, unsigned int parent, unsigned int firstFace, uns
     }
 }
 void ConstructBVHFromMesh(Mesh* inMesh) {
-
+	//check for lib
+	std::string filename = std::string(inMesh->name) + ".bvh";
+	std::ifstream infile(filename);
+	if (infile.good()) {
+		std::cout << "BVH file already exists for mesh: " << inMesh->name << std::endl;
+		ReadBVHNodesFromCSV(inMesh,inMesh->name);
+		RemapFacesFromCSV(inMesh->faces, inMesh->name);
+		return; 
+	}
+	unsigned int faceIndex = 0;
 	for (unsigned int i = 0; i < inMesh->faces.size(); i++) {
+		inMesh->faces[i].originalIndex = faceIndex++;
 		float tempAveragePos[3] = { 0,0,0 };
 		float tempMaxPos[3] = { -INFINITY ,-INFINITY ,-INFINITY };
 		float tempMinPos[3] = { INFINITY ,INFINITY ,INFINITY };
@@ -344,7 +360,9 @@ void ConstructBVHFromMesh(Mesh* inMesh) {
 		inMesh->bvh[currIndex].index = currIndex+1;
 		ConstructBVH(inMesh,currIndex, inMesh->batchedInfos[i].startFace, inMesh->batchedInfos[i].facesAmount);
 	}
-	std::cout << total[0] << " " << total[1] << " " << total[2] << std::endl;
+	WriteBVHNodesToCSV(inMesh, inMesh->name);
+	WriteFaceIndexMappingToCSV(inMesh->faces,inMesh->name);
+	//std::cout << total[0] << " " << total[1] << " " << total[2] << std::endl;
 }
 
 Mesh BatchMesh(std::vector<Mesh>& meshes) {
@@ -383,7 +401,8 @@ Mesh BatchMesh(std::vector<Mesh>& meshes) {
 }
 std::vector<Mesh> ScanForMesh(const char* meshFile)
 {
-	std::ifstream in(meshFile, std::ios::binary);
+	std::string mesh = std::string(meshFile)+ ".mesh";
+	std::ifstream in(mesh, std::ios::binary);
 	std::string line;
 	if (!in)
 	{
@@ -397,9 +416,9 @@ std::vector<Mesh> ScanForMesh(const char* meshFile)
 			if (line[0] == 'o') 
 			{
 				Mesh mesh;
+				mesh.name = line.substr(2);
 				meshes.push_back(mesh);
 				meshIndex++;
-				mesh.name = line.substr(2);
 			}
 			else if (line[0] == 'v' && line[1] == ' ') 
 			{
@@ -428,4 +447,129 @@ std::vector<Mesh> ScanForMesh(const char* meshFile)
 	}
 	return meshes;
 	in.close();
-};
+	
+}
+void WriteBVHNodesToCSV(const Mesh* mesh, const std::string& filename) {
+	const std::vector<BVHnode>& nodes = mesh->bvh;
+	std::string inMap = filename + ".bvh";
+	std::ofstream file(inMap);
+	if (!file.is_open()) {
+		std::cerr << "Error opening file\n";
+		return;
+	}
+
+	file << "objectIndex,rootNode\n";
+	for (unsigned int i = 0; i < mesh->batchedInfos.size(); i++) {
+		file << i << "," << mesh->batchedInfos[i].bvhIndex << "\n";
+	}
+
+	file << "maxX,maxY,maxZ,index,minX,minY,minZ,amount\n";
+
+	for (const auto& node : nodes) {
+		file << node.maxBound[0] << ","
+			<< node.maxBound[1] << ","
+			<< node.maxBound[2] << ","
+			<< node.index << ","
+			<< node.minBound[0] << ","
+			<< node.minBound[1] << ","
+			<< node.minBound[2] << ","
+			<< node.amount << "\n";
+	}
+
+}
+void ReadBVHNodesFromCSV(Mesh* mesh, const std::string& filename) {
+	std::string inMap = filename + ".bvh";
+	std::vector<BVHnode> nodes;
+	std::ifstream file(inMap);
+	if (!file.is_open()) {
+		std::cerr << "Error opening file\n";
+		return;
+	}
+	std::string line;
+	std::getline(file, line);
+	while (std::getline(file, line)) {
+		if (line.rfind("maxX", 0) == 0) {
+			break;
+		}
+		std::stringstream ss(line);
+		std::string value;
+		unsigned int objectIndex, rootNode;
+		std::getline(ss, value, ','); objectIndex = std::stoul(value);
+		std::getline(ss, value, ','); rootNode = std::stoul(value);
+
+		// store back into mesh
+		if (objectIndex < mesh->batchedInfos.size()) {
+			mesh->batchedInfos[objectIndex].bvhIndex = rootNode;
+		}
+	}
+	while (std::getline(file, line)) {
+		std::stringstream ss(line);
+		std::string value;
+
+		float maxBound[3];
+		unsigned int index;
+		float minBound[3];
+		unsigned int amount;
+
+		// Parse CSV values
+		std::getline(ss, value, ','); maxBound[0] = std::stof(value);
+		std::getline(ss, value, ','); maxBound[1] = std::stof(value);
+		std::getline(ss, value, ','); maxBound[2] = std::stof(value);
+
+		std::getline(ss, value, ','); index = std::stoul(value);
+
+		std::getline(ss, value, ','); minBound[0] = std::stof(value);
+		std::getline(ss, value, ','); minBound[1] = std::stof(value);
+		std::getline(ss, value, ','); minBound[2] = std::stof(value);
+
+		std::getline(ss, value, ','); amount = std::stoul(value);
+
+		nodes.emplace_back(maxBound, minBound, index, amount);
+	}
+	mesh->bvh.insert(mesh->bvh.begin(),nodes.begin(), nodes.end());
+}
+void WriteFaceIndexMappingToCSV(const std::vector<Face>& faces,	const std::string& filename) {
+	std::vector<unsigned int> map;
+	for (size_t i = 0; i < faces.size(); i++) {
+		map.push_back(faces[i].originalIndex);
+	}
+	std::string newMap = filename + ".indexmap";
+	std::ofstream file(newMap);
+	if (!file.is_open()) {
+		std::cerr << "Error opening file\n";
+		return;
+	}
+	file << "OriginalIndex,CurrentIndex\n";
+	for (unsigned int i = 0; i < map.size(); i++) {
+		file << map[i] << "," << i << "\n";
+	}
+	file.close();
+}
+void RemapFacesFromCSV(std::vector<Face>& faces,	const std::string& filename) {
+
+	std::vector<unsigned int> map;
+	std::string inMap = filename + ".indexmap";
+	std::ifstream file(inMap);
+	if (!file.is_open()) {
+		std::cerr << "Error opening mapping file\n";
+		return;
+	}
+	std::string line;
+	std::getline(file, line);
+	while (std::getline(file, line)) {
+		std::stringstream ss(line);
+		std::string value;
+
+		unsigned int original, current;
+		std::getline(ss, value, ','); original = std::stoul(value);
+		std::getline(ss, value, ','); current = std::stoul(value);
+
+		map.push_back(original);
+	}
+	file.close();
+	std::vector<Face> rearranged(faces.size());
+	for (unsigned int i = 0; i < faces.size(); i++) {
+		rearranged[i] = faces[map[i]];
+	}
+	faces.swap(rearranged);
+}
