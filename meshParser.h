@@ -89,7 +89,6 @@ struct BatchedInfo {
 	BatchedInfo(unsigned int sFace, unsigned int fAmount, int mIndex, unsigned int prioIndex, unsigned int bIndex, float pos[], float rot[], float s[]);
 };
 struct Mesh {
-public:
 	std::string name;
 	std::vector<Vertex> vertices;
 	std::vector<Normal> normals;

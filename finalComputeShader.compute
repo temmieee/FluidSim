@@ -442,7 +442,7 @@ HitInfo GetHitInfoFromRay(Ray ray)
 		vec3 worldHitPoint = ray.origin + ray.direction * hitInfo.distance;
 		vec3 localHitPoint = (inverseModelMatrix * vec4(worldHitPoint, 1.0)).xyz;
 		minDist = length(localHitPoint - localRay.origin);
-		uint bvhArray[4];
+		uint bvhArray[2];
 		uint currBVHArrayIndex=0;
 		HitInfo tempHitInfo;
 		tempHitInfo.distance=999999999;
@@ -522,9 +522,9 @@ HitInfo GetHitInfoFromRay(Ray ray)
 void main()
 {
 	//rotate the object
-	objectData[1].rotation.y=progress*0.0000;
-	objectData[1].inverseModelMatrix=CalculateInverseModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
-	objectData[1].modelMatrix=CalculateModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
+	//objectData[1].rotation.y=progress*0.001;
+	//objectData[1].inverseModelMatrix=CalculateInverseModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
+	//objectData[1].modelMatrix=CalculateModelMatrix(objectData[1].position, objectData[1].rotation, objectData[1].scale);
 
 
 	vec4 pixel = vec4(0.0, 0.0, 0.0, 1.0);
@@ -534,7 +534,7 @@ void main()
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
 	float x = float(pixelCoords.x * 2 - float(dimensions.x)) / float(dimensions.y);
 
-	vec3 cameraPos = vec3(0, 0, -4.5);
+	vec3 cameraPos = vec3(0, -0.0, -4.75);
 	vec3 rayOrigin = cameraPos + vec3(x, y, 1/tan(halffov * 3.14 / 180));
 	vec3 rayDir = normalize(rayOrigin - cameraPos);
 
@@ -542,7 +542,7 @@ void main()
 	vec3 col = vec3(1, 1, 1);
 	vec3 light = vec3(0, 0, 0);
 	uint rayPerPixel = 1;
-	uint bounce = 20;
+	uint bounce = 10;
 	float distance;
 	vec4 normalDepth = vec4(0, 0, 0, 1);
 	float roughness= 0;
@@ -667,6 +667,7 @@ void main()
 
 	pixel = vec4(light,1.0);
 	pixel=min(pixel, vec4(2.0));
+	//clamp this if you wanna do real-time
 	uint clampProgress=min(progress, progress);
 	
 
@@ -677,10 +678,11 @@ void main()
 	float temporalDiff=length(previousCol.xyz-outColor.xyz);
 	temporalDiff=exp(-temporalDiff * 1);
 	
-	float currBrightness = dot(outColor.xyz, vec3(0.299, 0.587, 0.114));
+	float currBrightness = dot(pixel.xyz, vec3(0.299, 0.587, 0.114));
 
+	currBrightness = 1.0 - abs(currBrightness - 0.5) * 2.0;
 	currBrightness = clamp(currBrightness, 0.0, 1.0);
-	float weight = mix(temporalDiff, 0.0, 1.0);
+	float weight = mix(temporalDiff, 0.0, 1.0-currBrightness);
 	
 	outColor=vec4(mix(outColor.xyz,previousCol.xyz,weight),0);
 	colorData[pixelCoords.x + pixelCoords.y * dimensions.x] = outColor;
@@ -719,7 +721,7 @@ void main()
 	vec3 m2     = delta * delta2;
 	vec3 variance = m2 / max(clampProgress, 1);
 	float noiseLevel = length(variance);
-	float blendWeight = 1.0 / (1.0 + noiseLevel*100+roughness*0.75);
+	float blendWeight = 1.0 / (1.0 + noiseLevel*100+roughness*0.5);
 	blurredAvg = mix(blurredAvg, outColor.xyz, blendWeight);
 
 

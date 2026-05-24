@@ -660,10 +660,10 @@ int main()
 
 	//Instantiate meshes
 	float bounds[3] = { 3.f,2.f,3.f };
-	float center[3] = { 0,-1.8f,0 };
+	float center[3] = { 0,-1.755f,0 };
 	float centerWall[3] = { 0,0,0 };
 	float walls[3] = { 7.f,3.75f,7.f };
-	unsigned int dimensions[3] = {4,1,4};
+	unsigned int dimensions[3] = {10,1,10};
 
 	batchedMesh.batchedInfos[0].position[0] = 0.f;
 	batchedMesh.batchedInfos[0].position[1] = 1.7f;
@@ -676,7 +676,7 @@ int main()
 	batchedMesh.batchedInfos[1].position[0] = 0.f;
 	batchedMesh.batchedInfos[1].position[1] = -1.815f;
 	batchedMesh.batchedInfos[1].position[2] = -0.f;
-	batchedMesh.batchedInfos[1].rotation[1] = 0.75f;
+	batchedMesh.batchedInfos[1].rotation[1] = 0.725f;
 	batchedMesh.batchedInfos[1].scale[0] = 1.5f;
 	batchedMesh.batchedInfos[1].scale[1] = 1.5f;
 	batchedMesh.batchedInfos[1].scale[2] = 1.5f;
@@ -685,15 +685,16 @@ int main()
 	
 
 
-	std::vector<Material> materialArray = CreateMaterialArray(13+bounds[0]*bounds[1]*bounds[2]);
+	std::vector<Material> materialArray = CreateMaterialArray(13+ dimensions[0]* dimensions[1]* dimensions[2]);
 	materialArray[10].emissive = 3.0f;
 	materialArray[10].color = { 1,1,1,1 };
-	materialArray[11].color = Vector4(1.f, 0.75f, 0.25f, 1.f);
+	materialArray[11].emissive = 0.0f;
+	materialArray[11].color = Vector4(0.1f, 1.0f, 1.0f, 1.f);
 	materialArray[11].roughness =0.0001f;
 	materialArray[12].color = Vector4(1.f, 1, 1, 1.f);
 	//wall
-	float wallRoughness = 0.001f;
-	float otherColor = wallRoughness<0.9? 1 - wallRoughness:0.1f;
+	float wallRoughness = 0.0001f;
+	float otherColor = wallRoughness < 0.5 ? 1.0f : 0.1f;
 	materialArray[0].color = Vector4(1.0f,otherColor,otherColor, 1.f);
 	materialArray[2].color = Vector4(otherColor ,1.0f,otherColor, 1.f);
 	materialArray[1].color = Vector4(otherColor,otherColor, 1.0f, 1.f);
@@ -720,15 +721,21 @@ int main()
 			batchedMesh.batchedInfos[i].materialIndex = i + 5;
 		}
 		for (unsigned int i = 8; i < batchedMesh.batchedInfos.size(); i++) {
-			materialArray[batchedMesh.batchedInfos[i].materialIndex].roughness = floor(static_cast <float>(rand()) / static_cast <float>(RAND_MAX)*1);
+			materialArray[batchedMesh.batchedInfos[i].materialIndex].roughness = floor(static_cast <float>(rand()) / static_cast <float>(RAND_MAX)*2);
+			materialArray[batchedMesh.batchedInfos[i].materialIndex].emissive = 5*floor(static_cast <float>(rand()) / static_cast <float>(RAND_MAX) * 1.2);
+			Vector4 tempCol = materialArray[batchedMesh.batchedInfos[i].materialIndex].color;
+			if (materialArray[batchedMesh.batchedInfos[i].materialIndex].emissive > 0) {
+				materialArray[batchedMesh.batchedInfos[i].materialIndex].color = Vector4(tempCol.x*2, tempCol.y*2, tempCol.z*2, 1.f);
+			}
+			
 		}
-		materialArray[13].emissive = 4.f;
-		materialArray[16].emissive = 4.f;
-		materialArray[24].emissive = 4.f;
-		materialArray[26].emissive = 4.f;
-		materialArray[13].color = { 0.1,1.0,1.,1 };
-		materialArray[16].color = {1,0.3,1,1};
-		materialArray[24].color = { 0.3,0.75,1,1 };
+		//materialArray[13].emissive = 4.f;
+		//materialArray[16].emissive = 4.f;
+		//materialArray[24].emissive = 4.f;
+		//materialArray[26].emissive = 4.f;
+		//materialArray[13].color = { 0.1,1.0,1.,1 };
+		//materialArray[16].color = {1,0.3,1,1};
+		//materialArray[24].color = { 0.3,0.75,1,1 };
 	}
 
 	//PrintMesh(mesh[0]);
