@@ -1,5 +1,19 @@
 ﻿#version 460 core
 #define PI 3.14159265
+
+//progress
+const uint cl=1;
+const uint clampProgressMax=20;
+//ray
+const uint rayPerPixel = 1;
+const uint bounce = 10;
+//bloom
+const int bloomAmount=10;
+const float bloomStrength=0.5;
+const float kEpsilon = 0.0000001;
+//blur
+const int blurAmount = 1;
+const float threshold=2;
 mat4 rotationX(float angle) {
     float c = cos(angle), s = sin(angle);
     return mat4(
@@ -373,7 +387,6 @@ HitInfo GetHitInfoFromBVH(Ray ray,uint inBVHindex)
 	//hitInfo.position=vec3(0,0,0);
 	hitInfo.objectIndex = -1;
 	hitInfo.distance = 99999999;
-	float kEpsilon = 0.0000001;
 	BVHnode currBVH=bvhData[inBVHindex];
 	for (uint i=currBVH.index*3;i<(currBVH.index+currBVH.amount)*3;i+=3)
 	{
@@ -528,7 +541,6 @@ void main()
 
 
 	vec4 pixel = vec4(0.0, 0.0, 0.0, 1.0);
-	//vec4 pixel = vec4(0.0, 0.5, 0.0, 1.0);
 	ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
 	ivec2 dimensions = imageSize(screen);
 	float y = float(pixelCoords.y * 2 - float(dimensions.y)) / float(dimensions.y);
@@ -541,8 +553,6 @@ void main()
 	vec3 debug;
 	vec3 col = vec3(1, 1, 1);
 	vec3 light = vec3(0, 0, 0);
-	uint rayPerPixel = 1;
-	uint bounce = 10;
 	float distance;
 	vec4 normalDepth = vec4(0, 0, 0, 1);
 	float roughness= 0;
@@ -668,7 +678,7 @@ void main()
 	pixel = vec4(light,1.0);
 	pixel=min(pixel, vec4(2.0));
 	//clamp this if you wanna do real-time
-	uint clampProgress=min(progress, progress);
+	uint clampProgress=min(progress, clampProgressMax)*cl+progress*(1-cl);
 	
 
 	vec4 previousCol=colorData[pixelCoords.x + pixelCoords.y * dimensions.x];
@@ -690,8 +700,6 @@ void main()
 	colorData[normalDepthIndexOffset+pixelCoords.x + pixelCoords.y * dimensions.x] = normalDepth;
 	
 	//denoiser
-	int blurAmount = 1;
-	float threshold=2;
 	float totalWeight=0;
 	vec4 blurColor = vec4(0, 0, 0, 0);
 	for (int i = -blurAmount; i <= blurAmount; i++) {
@@ -728,7 +736,6 @@ void main()
 
 
 	//bloom
-	int bloomAmount = 10; // radius of bloom blur
 	float bloomTotalWeight = 0.0;
 	vec3 bloomColor = vec3(0.0);
 
@@ -747,7 +754,7 @@ void main()
 	}
 
 	bloomColor *= 1 / max(bloomTotalWeight, 1e-6);
-	blurredAvg += bloomColor * 0.4;
+	blurredAvg += bloomColor * bloomStrength;
 	//tone mapping
 	
 	vec3 colorLinear = blurredAvg;
